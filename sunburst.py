@@ -35,38 +35,40 @@ colormap = get_colormap(data)
 
 keypicker = px.sunburst(data,
                         names='Schlüssel',
-                        values='one',
+                        # values='Fallzahl',
                         parents='parent',
                         color='Schlüssel',
                         color_discrete_map=colormap,
                         hover_data=['Straftat', 'Schlüssel', 'Fallzahl'],
                         maxdepth=2,
-                        height=1000,
-                        width=1000)
+                        height=700,
+                        # width=700
+                        )
 
-keypicker.update_layout(margin=dict(t=15, r=15, b=15, l=15))
+keypicker.update_layout(margin=dict(t=15, r=15, b=15, l=15),
+                        paper_bgcolor="#eeeeee")
 keypicker.update_traces(hovertemplate=hovertemplate)
 keypicker.update_coloraxes(showscale=False)
 
-app.layout = html.Div(children=[
-    html.H1(children='Hello Dash'),
+app.layout = html.Div([
 
-    html.Div(children='''
-        Dash: A web application framework for your data.
-    '''),
+    html.Div([
+        dcc.Graph(
+            id='fig-keypicker',
+            figure=keypicker
+        ),
+    ], style={"flex": 1}),
 
-    dcc.Graph(
-        id='fig-keypicker',
-        figure=keypicker
-    ),
+    html.Div([
+        dcc.Graph(
+            id='fig-timeseries'
+        ),
+    ], style={"flex": 1}),
 
-    html.Div(id='clickdata'),
-
-    dcc.Graph(
-        id='fig-timeseries'
-    ),
-
-])
+], style={"display": "flex",
+          "flex-flow": "row wrap",
+          "align-items": "center",  # rechter Plot vertikal zentriert
+          })
 
 
 @callback(Output("fig-timeseries", "figure"),
@@ -74,7 +76,7 @@ app.layout = html.Div(children=[
 def update_timeseries(input_json):
 
     key = sunburst_location(input_json)
-    
+
     if key == "root" or key is None:
         child_keys = data.loc[data.parent.isna()].Schlüssel.values
     else:
@@ -82,16 +84,21 @@ def update_timeseries(input_json):
 
     # filter to the selected key and children:
     df_plot = data.loc[data.Schlüssel.isin(child_keys)]
-    
+
     fig = px.bar(
         df_plot,
-        x="Schlüssel",
-        y="Fallzahl",
+        y="Schlüssel",
+        x="Fallzahl",
         color="Schlüssel",
-        color_discrete_map=colormap
+        color_discrete_map=colormap,
+        orientation="h",
+        height=500,
+        # width=700,
     )
-    
-    return(fig)
+
+    fig.update_layout(paper_bgcolor="#eeeeee")
+
+    return (fig)
 
 
 if __name__ == '__main__':
