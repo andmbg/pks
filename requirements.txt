@@ -19,6 +19,7 @@ openpyxl==3.1.2
 packaging==23.2
 pandas==2.1.1
 plotly==5.17.0
+pyarrow==13.0.0
 python-dateutil==2.8.2
 pytz==2023.3.post1
 requests==2.31.0

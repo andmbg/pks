@@ -37,20 +37,11 @@ def _parent(key: str, array: pd.Series):
     return res
 
 
-def add_level_parent(df: pd.DataFrame) -> pd.DataFrame:
+def add_parent(df: pd.DataFrame) -> pd.DataFrame:
     """
     Ermittelt aus einer PKS-Tabelle hierarchische Zusammenhänge zwischen Schlüsseln
     und fügt die Spalten "level" und "parent" hinzu.
     """
-
-    # Summenschlüssel ausschließen.
-    # Dies sind vom Amt selber erstellte beliebige Kollektionen von Schlüsseln.
-    # Darunter welche, die "*" enthalten:
-    df = df.loc[df.Schlüssel.str.match("^[0-9]+$")]
-
-    # sowie weitere, die sich auch außerhalb der eigentlichen Hierarchie bewegen:
-    df = df.loc[df.Schlüssel.astype(int).lt(890000)]
-
     # Nullen am Ende löschen; hilft bei der weiteren Verarbeitung, wird später
     # wieder aufgefüllt:
     keys = (df.Schlüssel
@@ -66,9 +57,7 @@ def add_level_parent(df: pd.DataFrame) -> pd.DataFrame:
            .drop_duplicates(subset="key")
            .reset_index(drop=True)
            )
-    # "level": leer, bis auf die höchsten Schlüssel ("_00000"), die Ebene 1 sind:
-    klp["level"] = klp.key.apply(lambda x: 1 if len(x) == 1 else 0)
-
+    
     # Suche des Oberschlüssels für jeden Schlüssel anwenden:
     klp["parent"] = klp.key.apply(lambda x: _parent(x, klp.key))
 
@@ -76,17 +65,12 @@ def add_level_parent(df: pd.DataFrame) -> pd.DataFrame:
     klp.key = klp.key.str.pad(6, side="right", fillchar="0")
     klp.parent = klp.parent.str.pad(6, side="right", fillchar="0")
 
-    # Ebene: Oberschlüssel aufsuchen (ist immer oberhalb in der Tabelle), Ebene
-    # dort ablesen und +1 speichern:
-    for i, row in klp.iterrows():
-        parents_level = klp.loc[klp.key == row["parent"], "level"]
-        klp.at[i, "level"] = 1 if len(
-            parents_level) == 0 else parents_level.iloc[0] + 1
-
     # PKS-Daten um die Hierarchiedaten erweitern:
-    df = pd.merge(df, klp,
-                  how="left",
-                  left_on="Schlüssel",
-                  right_on="key")
+    df = (pd.merge(df, klp,
+                   how="left",
+                   left_on="Schlüssel",
+                   right_on="key")
+          .drop("key", axis="columns")
+    )
 
     return df

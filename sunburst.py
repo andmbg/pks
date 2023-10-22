@@ -8,11 +8,10 @@ import plotly.express as px
 import plotly.graph_objects as go
 from dash import Dash, dcc, html, Input, Output, callback
 
-from src.data.parents import add_level_parent
-from src.visualization.dashboard_fns import sunburst_location
+from src.data.parents import add_parent
+from src.visualization.visualize import sunburst_location, get_colormap
 
-# import_data("data/raw", "data/processed/pks2.csv")
-data = pd.read_csv("data/processed/pks.csv")
+data = pd.read_parquet("data/processed/pks.parquet")
 
 # Katalog aus Daten erstellen
 
@@ -21,7 +20,7 @@ data = pd.read_csv("data/processed/pks.csv")
 data = data.loc[(data.Jahr == 2021) & (data.Bundesland == "Bund")]
 
 # Hierarchie aus Ziffern ableiten:
-data = add_level_parent(data)
+data = add_parent(data)
 data = data.assign(one=1)
 
 app = Dash(__name__)
@@ -32,11 +31,14 @@ hovertemplate = """
                 <extra>%{customdata[2]} Fälle</extra>"""
 hovertemplate = re.sub(r"([ ]{2,})|(\n)", "", hovertemplate)
 
+colormap = get_colormap(data)
+
 keypicker = px.sunburst(data,
                         names='Schlüssel',
                         values='one',
                         parents='parent',
                         color='Schlüssel',
+                        color_discrete_map=colormap,
                         hover_data=['Straftat', 'Schlüssel', 'Fallzahl'],
                         maxdepth=2,
                         height=1000,
@@ -84,7 +86,9 @@ def update_timeseries(input_json):
     fig = px.bar(
         df_plot,
         x="Schlüssel",
-        y="Fallzahl"
+        y="Fallzahl",
+        color="Schlüssel",
+        color_discrete_map=colormap
     )
     
     return(fig)
