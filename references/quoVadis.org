@@ -1,0 +1,30 @@
+
+* Weiter im Text
+
+- parents aus aktueller Parent-Ermittlung an alle keys der Vergangenheit und der anderen Länder anheften.
+  Nicht in the weeds verloren gehen, sondern Zeitreihen ermöglichen!
+
+- Layout fürs Dashboard ausdenken, Bootstrap dafür ansehen.
+  => drawio-Skizze existiert.
+
+  - globaler Dropdown: Land
+
+  - aus clickData im Barplot 2er-Selektion für Deliktvergleich in Zeitreihe
+
+    - vll selektierte keys auffällig einfärben mit den 2 Farben des Direktvergleichs?
+    - Zeitreihe als Barplot mit Aufklärungsrate
+
+  - wir können so auch >2 Delikte vergleichen. Breiter Barplot in 2. Reihe über ganzen Bildschirm.
+
+  - Problem: Selektieren vs. Deselektieren
+
+    - Option: Klick in Plot C heißt "deselektieren"
+    - Option: 2. Mal Klick in Plot B heißt "des."; dann müssen wir vll. mehr Logik programmieren.
+
+* neue Alternative
+
+- Plot A (sunburst-Selektor) enhält alle historisch existierenden keys
+- Plot B (existence) zeigt für die aktuellen children einen scatterplot:
+  - y: key, Bundesland; x: Jahr; scatter oder line: Existenz dieses Schlüssels
+- Plot B: Klicks auf Land*Key selektiert Land*key für Plot C
+- Plot C: barplot, Zeitreihe mit Aufklärungsrate

@@ -1,9 +1,11 @@
+from src.visualization.visualize import get_colormap
+from src.data.config import colname_map, select_columns
+import sys
 from typing import Annotated
 
 import pandas as pd
 
-from src.data.config import colname_map, select_columns
-from src.data.parents import add_parent
+sys.path.append("..")  # necessary if used by a notebook
 
 
 # angepasste Ladefunktion, übernimmt Spaltenauswahl und -Benennung sowie Historisierung
@@ -13,9 +15,9 @@ def _load_n_trim(dir, yr, columns):
     Lädt einen DataFrame und 
     """
     return (pd.read_excel(f"{dir}/PKS{yr}.xlsx")[columns]
-            .set_axis(['Schlüssel', 'Straftat', 'Bundesland', 'Fallzahl', 'je100k', 'versucht', 'aufgeklärt'], axis=1)
+            .set_axis(['key', 'label', 'state', 'count', 'freq', 'attempts', 'clearance'], axis=1)
             .rename(colname_map)
-            .assign(**{"Jahr": yr})
+            .assign(**{"year": yr})
             )
 
 
@@ -32,8 +34,8 @@ def import_data(indirpath: Annotated[str, "Quellordner mit den Excel-Dateien"],
     data.replace({"Bund echte Zählung der Tatverdächtigen": "Bund",
                   "Bundesrepublik Deutschland": "Bund"}, inplace=True)
     # Index und Sortierung:
-    data.set_index(["Jahr", "Bundesland", "Schlüssel",
-                   "Straftat"], inplace=True)
+    data.set_index(["year", "state", "key",
+                   "label"], inplace=True)
     data.sort_index(inplace=True)
     data.reset_index(inplace=True)
 
@@ -44,26 +46,122 @@ def import_data(indirpath: Annotated[str, "Quellordner mit den Excel-Dateien"],
         data.to_csv(outfilepath)
 
 
-def clean_sum_keys(infilepath: str, outfilepath: str, format: str = "parquet") -> None:
-    """
-    Summenschlüssel ausschließen.
-    Dies sind vom Amt selber erstellte beliebige Kollektionen von Schlüsseln.
-    Darunter welche, die "*" enthalten.
-    """
-    df = pd.read_parquet(infilepath)
-    df = df.loc[df.Schlüssel.str.match("^[0-9]+$")]
-    df = df.loc[df.Schlüssel.astype(int).lt(890000)]
+# def clean_sum_keys(infilepath: str, outfilepath: str, format: str = "parquet") -> None:
+#     """
+#     Summenschlüssel ausschließen.
+#     Dies sind vom Amt selber erstellte beliebige Kollektionen von Schlüsseln.
+#     Darunter welche, die "*" enthalten.
+#     """
+#     df = pd.read_parquet(infilepath)
+#     df = df.loc[df.Schlüssel.str.match("^[0-9]+$")]
+#     df = df.loc[df.Schlüssel.astype(int).lt(890000)]
 
-    if format == "parquet":
-        df.to_parquet(outfilepath)
+#     if format == "parquet":
+#         df.to_parquet(outfilepath)
 
-    elif format == "csv":
-        df.to_csv(outfilepath)
+#     elif format == "csv":
+#         df.to_csv(outfilepath)
+
+
+def hierarchize_keys(keylist: pd.Series, parent_col_name="parent", level_col_name="level") -> pd.DataFrame:
+    """
+    Takes a unique key list, returns inferred levels and parents.
+
+    Starting with a sorted list of unique keys, the rule gets applied with every step down the list:
+    - L = leftmost character that changes; = level of the next key
+    - 
+    """
+
+    # the shape of the result:
+    df = pd.DataFrame({"key": keylist,
+                       level_col_name: None,
+                       parent_col_name: None})
+
+    # (1) level: identify the level at which a key resides
+
+    df[level_col_name].iloc[0] = 1
+
+    for k in range(1, len(df)):
+        key_i = df.key.iloc[k-1]
+        key_j = df.key.iloc[k]
+
+        # this key's leftmost character change = level:
+        for digit in range(6):
+            if key_j[digit] != key_i[digit]:
+                this_level = digit + 1
+                break
+
+        df[level_col_name][k] = this_level
+
+    # (2) parent: infer parent from whether each key is lower, higher or equal to its predecessor
+
+    # level: |dummy|       1       |  2  |  3  |  4  |  5  |  6  |
+    parents = [None, df.key.iloc[0], None, None, None, None, None]
+
+    for k in range(1, len(df)):
+        predecessor_level = df[level_col_name].iloc[k-1]
+        this_keys_level = df[level_col_name].iloc[k]
+
+        if this_keys_level == 1:
+            df[parent_col_name].iloc[k] = None
+            parents[1] = df.key.iloc[k]
+        elif this_keys_level > predecessor_level:
+            df[parent_col_name].iloc[k] = df.key.iloc[k-1]
+            parents[this_keys_level] = df.key.iloc[k]
+        elif this_keys_level < predecessor_level:
+            df[parent_col_name].iloc[k] = parents[this_keys_level-1]
+            parents[this_keys_level] = df.key.iloc[k]
+        elif this_keys_level == predecessor_level:
+            df[parent_col_name].iloc[k] = df[parent_col_name].iloc[k-1]
+
+    return df
+
+
+def hierarchize_data(data: pd.DataFrame, parent_col_name="parent", level_col_name="level") -> pd.DataFrame:
+
+    data = data.loc[~data.key.eq("------")]
+
+    allkeys = data.key.drop_duplicates().sort_values()
+
+    # extra treatment for keys containing asterisks, as they all concern one theme (theft),
+    # and because they otherwise cause lots of headache in hierarchization:
+    asterisk_keys = (allkeys
+                     .loc[allkeys.str.contains("*", regex=False)]
+                     .reset_index(drop=True)
+                     )
+    numeric_keys = (allkeys
+                    .loc[~allkeys.isin(asterisk_keys)]
+                    .reset_index(drop=True)
+                    )
+
+    hierarchy = pd.concat([
+        hierarchize_keys(asterisk_keys, parent_col_name=parent_col_name, level_col_name=level_col_name),
+        hierarchize_keys(numeric_keys)
+    ]).set_index("key")
+
+    # join this hierarchy information to the actual crime data:
+    data_hier = (data
+                 .set_index("key")
+                 .join(hierarchy, how="left")
+                 .reset_index()
+                 )
+
+    return (data_hier)
 
 
 if __name__ == "__main__":
 
+    # transport the data from Excel files to a processable form without much processing:
     import_data(indirpath="data/raw/",
                 outfilepath="data/interim/pks.parquet")
-    clean_sum_keys(infilepath="data/interim/pks.parquet",
-                   outfilepath="data/processed/pks.parquet")
+
+    data = pd.read_parquet("data/interim/pks.parquet")
+
+    data_hr_glob = hierarchize_data(data)
+    global_colormap = get_colormap(data_hr_glob)
+    data_hr_glob["color"] = data_hr_glob.key.apply(
+        lambda key: global_colormap[key])
+
+    data_hr_glob = data_hr_glob.drop(["level", "parent"], axis=1)
+
+    data_hr_glob.to_parquet("data/processed/pks.parquet")
