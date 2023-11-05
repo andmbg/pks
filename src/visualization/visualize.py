@@ -3,6 +3,7 @@ import re
 
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 
 
 def _css_rainbow(N=5, s=0.5, v=0.5):
@@ -98,3 +99,65 @@ def get_keypicker(df, colormap, hovertemplate):
         .update_traces(hovertemplate=hovertemplate)
         .update_coloraxes(showscale=False)
     )
+
+
+def get_existence_chart(df, keys, xaxis="year", yaxis="key", labels="label", newname="label_change"):
+    """
+    Returns an existence chart indicating a set of keys and their existence through the years.
+    
+    :param df: PKS dataframe
+    :param keys: list of keys that have been selected for display
+    :param xaxis: name of the years attribute
+    :param yaxis: name of the key attribute
+    :param labels: name of the label attribute, to be displayed within the plot
+    :param newname: name of the boolean attribute that signals if the current entry corresponds
+        to a change in the label of the same key, compared to the previous year
+    """
+    df = df.loc[df.key.isin(keys)]
+    
+    # only label the first year using each unique label, rest is "":
+    df = df.assign(label = df.apply(lambda row: row["label"] if row["label_change"] else "", axis=1))
+
+    # ensure right order of dots:
+    df = df.sort_values(["key", "year"])
+    
+    fig = go.Figure()
+
+    # add each key
+    for i, grp in df.groupby(yaxis):
+        fig.add_trace(
+            go.Scatter(
+                x=grp[xaxis],
+                y=grp[yaxis],
+                text=grp[labels],
+                mode="lines+markers+text",
+                textposition="top right",
+                marker=dict(size=12),
+            )
+        )
+
+    # add markers for each time a new label is used (black circles):
+    new_markers = df.loc[df[newname]]
+
+    fig.add_trace(
+        go.Scatter(
+            x=new_markers[xaxis],
+            y=new_markers[yaxis],
+            mode="markers",
+            marker=dict(color="black",
+                        line_width=2,
+                        size=12,
+                        symbol="circle-open"),
+            # hover
+        )
+    )
+
+    fig.update_traces(showlegend=False)
+    fig.update_xaxes(type="category")
+    
+    # adapt height to number of keys displayed (space them evenly):
+    fig.update_layout(margin=dict(t=10, b=5, r=10),
+                      height=55*len(keys)+15, width=1500,
+                      yaxis_range=[-0.5, len(keys)])
+    
+    return fig
