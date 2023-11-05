@@ -47,8 +47,6 @@ def import_data(indirpath: Annotated[str, "Quellordner mit den Excel-Dateien"],
     data_temp = pd.DataFrame()
     
     for i, grp in data.groupby(["state", "key", "label"]):
-        if (i[0]=="Bund") & (i[1]=="621000"):
-            print()
         this = grp.copy().reset_index()
         this.loc[this.index[0], "label_change"] = True
         data_temp = pd.concat([data_temp, this])

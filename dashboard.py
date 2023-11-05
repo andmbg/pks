@@ -9,22 +9,26 @@ import plotly.graph_objects as go
 from dash import Dash, dcc, html, Input, Output, callback
 
 from src.data.import_data_pks import hierarchize_data
-from src.visualization.visualize import sunburst_location, get_colormap, get_keypicker
+from src.visualization.visualize import sunburst_location, get_keypicker, get_existence_chart, get_timeseries
 
 
 def get_df_colors(year=2022):
-    df = data_bund_hr.loc[data_bund_hr.year==year]
+    df = data_bund_hr.loc[data_bund_hr.year == year]
     colors = {k: grp.color.iloc[0] for k, grp in df.groupby("key")}
     return df, colors
 
-    
+
 data_raw = pd.read_parquet("data/processed/pks.parquet")
+data_raw["selection_color"] = ""
 all_years = data_raw.year.unique()
 data_bund = data_raw.loc[data_raw.state == "Bund"]
 
+key_selection = [None, None, None]
+
 # For each year, produce an independent hierarchy. This is necessary, as the hierarchy relationships
 # in the "crime catalogue" change across years, and contradictory relationships disable plotting:
-data_bund_hr = pd.concat([hierarchize_data(grp) for _, grp in data_bund.groupby("year")])
+data_bund_hr = pd.concat([hierarchize_data(grp)
+                         for _, grp in data_bund.groupby("year")])
 
 app = Dash(__name__)
 
@@ -37,6 +41,7 @@ hovertemplate = re.sub(r"([ ]{2,})|(\n)", "", hovertemplate)
 # initial sunburst plot:
 df, colors = get_df_colors(2022)
 keypicker = get_keypicker(df=df, colormap=colors, hovertemplate=hovertemplate)
+# timeseries = get_timeseries(df)
 
 app.layout = html.Div([
 
@@ -44,7 +49,7 @@ app.layout = html.Div([
         dcc.Dropdown(
             id="yearpicker",
             options=[{"label": y, "value": y} for y in all_years],
-            value='2022',
+            value=2022,
             placeholder='Jahr',
         ),
 
@@ -57,66 +62,93 @@ app.layout = html.Div([
 
     html.Div([
         dcc.Graph(
-            id='fig-timeseries'
+            id='fig-key-presence'
         ),
     ], style={"flex": 1}),
 
-    html.Div(id="show_clickData")
+    html.Div([
+        dcc.Graph(
+            id="fig-timeseries"
+        )
+    ]
+    ),
 
 ], style={"display": "flex",
-          "flex-flow": "row wrap",
-          "align-items": "center",  # rechter Plot vertikal zentriert
+          "flexFlow": "row wrap",
+          "alignItems": "center",  # rechter Plot vertikal zentriert
           })
+
 
 @callback(Output("fig-keypicker", "figure"),
           Input("yearpicker", "value"))
 def update_key_picker(year):
+    """
+    Sunburst chart: year
+    """
     df, colors = get_df_colors(year)
-    keypicker = get_keypicker(df=df, colormap=colors, hovertemplate=hovertemplate)
+    keypicker = get_keypicker(df=df, colormap=colors,
+                              hovertemplate=hovertemplate)
     return keypicker
 
 
-@callback(Output("fig-timeseries", "figure"),
+@callback(Output("fig-key-presence", "figure"),
           Input("fig-keypicker", "clickData"),
-          Input("yearpicker", "value"),
-          )
-def update_ts_keys(input_json, year):
+          Input("yearpicker", "value"))
+def update_key_presence(input_json, year):
+    """
+    Presence chart
+    """
 
     key = sunburst_location(input_json)
-    df, colors = get_df_colors(year)
+    df, colormap = get_df_colors(year)
 
-    # just special syntax for when parent is None:
-    if key == "root" or key is None:
-        child_keys = data_bund_hr.loc[data_bund_hr.parent.isna()].key.values
+    if key == "root" or key is None:  # just special syntax for when parent is None
+        child_keys = df.loc[df.parent.isna()].key.unique()
     else:
-        child_keys = data_bund_hr.loc[data_bund_hr.parent == key].key.values
+        child_keys = df.loc[df.parent == key].key.unique()
 
-    # filter to the selected key and children
-    # note, we are using the children determined in the data_one df to filter
-    # the overall dataframe!
-    df_plot = df.loc[(df.key.isin(child_keys))]
-
-    fig = px.bar(
-        df_plot,
-        y="key",
-        x="count",
-        color="key",
-        color_discrete_map=colors,
-        orientation="h",
-        height=500,
-        # width=700,
-    )
+    fig = get_existence_chart(data_bund_hr, child_keys, colormap)
 
     fig.update_layout(paper_bgcolor="#eeeeee")
 
     return (fig)
 
 
-@callback(Output("show_clickData", "children"),
-          Input("fig-timeseries", "clickData"))
-def update_clickData(input_json):
+@callback(Output("fig-timeseries", "figure"),
+          Input("fig-key-presence", "clickData"))
+def update_selected_from_presence(input_json):
 
-    return str(input_json)
+    global key_selection
+
+    selected_key = input_json["points"][0]["y"]
+
+    # push this key into the selection, drop oldest if necessary:
+    droppable_key = key_selection[0]
+    key_selection = key_selection[1:]
+    key_selection.append(selected_key)
+
+    selected_keys_states = []
+    for i in key_selection:
+        if i is not None:
+            selected_keys_states.append(
+                {"state": "Bund", "key": i}
+            )
+
+    df_ts = pd.concat([
+        data_bund_hr.loc[(data_bund_hr.state.eq(i["state"])) & (data_bund_hr.key.eq(i["key"]))] for i in selected_keys_states
+    ])
+
+    df_ts = df_ts[["key", "state", "year",
+                   "label", "count", "clearance", "color"]]
+    df_ts["unsolved"] = df_ts["count"] - df_ts["clearance"]
+    df_ts = pd.melt(df_ts,
+                    id_vars=["key", "state", "year", "label", "color"],
+                    value_vars=["count", "unsolved"],
+                    )
+
+    timeseries = get_timeseries(df_ts)
+
+    return timeseries
 
 
 if __name__ == '__main__':

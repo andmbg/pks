@@ -2,11 +2,13 @@ import colorsys
 import re
 
 import pandas as pd
+import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 
-def _css_rainbow(N=5, s=0.5, v=0.5):
+def _css_rainbow(N=5, s=1, v=.75):
     """
     Helper that gives N samples from the rainbow.
     """
@@ -20,7 +22,7 @@ def _css_rainbow(N=5, s=0.5, v=0.5):
 
 def get_colormap(df: pd.DataFrame, keycolumn: str = "key") -> dict:
     """
-    Derive from a crime stats dataset a color map {"key": "CSS color} that
+    Derive from a crime stats dataset a color map {"key": "CSS color"} that
     for each key distributes CSS colors among its children such that they
     are maximally distinguishable visually. Used by plotly.
     """
@@ -101,10 +103,10 @@ def get_keypicker(df, colormap, hovertemplate):
     )
 
 
-def get_existence_chart(df, keys, xaxis="year", yaxis="key", labels="label", newname="label_change"):
+def get_existence_chart(df, keys, colormap, xaxis="year", yaxis="key", labels="label", newname="label_change"):
     """
     Returns an existence chart indicating a set of keys and their existence through the years.
-    
+
     :param df: PKS dataframe
     :param keys: list of keys that have been selected for display
     :param xaxis: name of the years attribute
@@ -114,16 +116,22 @@ def get_existence_chart(df, keys, xaxis="year", yaxis="key", labels="label", new
         to a change in the label of the same key, compared to the previous year
     """
     df = df.loc[df.key.isin(keys)]
-    
-    # only label the first year using each unique label, rest is "":
-    df = df.assign(label = df.apply(lambda row: row["label"] if row["label_change"] else "", axis=1))
 
+    # mark where labels of keys change:
+    df = df.assign(label=df.apply(
+        lambda row: row["label"] if row["label_change"] else "", axis=1))
+    # TODO just print the first label, changes as hover
+    #
+
+    # categorical y-axis:
+    df.key = df.key.astype("str")
+    
     # ensure right order of dots:
     df = df.sort_values(["key", "year"])
-    
+
     fig = go.Figure()
 
-    # add each key
+    # add each key's line and points:
     for i, grp in df.groupby(yaxis):
         fig.add_trace(
             go.Scatter(
@@ -131,8 +139,9 @@ def get_existence_chart(df, keys, xaxis="year", yaxis="key", labels="label", new
                 y=grp[yaxis],
                 text=grp[labels],
                 mode="lines+markers+text",
+                marker=dict(color=colormap[i], size=12),
+                line_width=4,
                 textposition="top right",
-                marker=dict(size=12),
             )
         )
 
@@ -145,19 +154,88 @@ def get_existence_chart(df, keys, xaxis="year", yaxis="key", labels="label", new
             y=new_markers[yaxis],
             mode="markers",
             marker=dict(color="black",
-                        line_width=2,
-                        size=12,
+                        line_width=3,
+                        size=15,
                         symbol="circle-open"),
-            # hover
+            customdata=np.stack((new_markers[labels], new_markers[xaxis]), axis=-1),
+            hovertemplate="Schlüssel %{y}: %{customdata[0]}"
         )
     )
 
     fig.update_traces(showlegend=False)
     fig.update_xaxes(type="category")
-    
+
     # adapt height to number of keys displayed (space them evenly):
     fig.update_layout(margin=dict(t=10, b=5, r=10),
-                      height=55*len(keys)+15, width=1500,
-                      yaxis_range=[-0.5, len(keys)])
+                      height=55*len(keys)+35,
+                      yaxis_range=[-0.5, len(keys)],
+                      plot_bgcolor="rgba(0,0,0,0)")
+
+    return fig
+
+
+def get_timeseries(df):
+    """
+    :param df: Dataframe containing 1-n keys (only the data to be displayed - filter beforehand!)
+    """
+    colormap = {i: grp.loc[grp.index[0], "color"] for i, grp in df.groupby("key")}
+
+    statemap = {
+    "Brandenburg": "BB",
+    "Berlin": "BE",
+    "Baden-Württemberg": "BW",
+    "Bayern": "BY",
+    "Schleswig-Hostein": "SH",
+    "Hamburg": "HH",
+    "Bremen": "HB",
+    "Mecklenburg-Vorpommern": "MV",
+    "Niedersachsen": "NI",
+    "Sachsen-Anhalt": "ST",
+    "Nordrhein-Westfalen": "NW", 
+    "Hessen": "HE",
+    "Saarland": "SL",
+    "Sachsen": "SN",
+    "Thüringen": "TH",
+    "Rheinland-Pfalz": "RP",
+    "Bund": "D"
+    }
+
+    df = df.copy()
+    
+    df.state = df.state.apply(lambda x: statemap[x])
+    df.key = df.key + "<br>" + df.state
+    timerange = [min(df.year), max(df.year)]
+    years = list(range(timerange[0], timerange[1]+1))    
+
+    fig = make_subplots(cols=len(years), shared_yaxes=True,
+                        horizontal_spacing=.005,
+                        subplot_titles=years)
+
+    for i, year in enumerate(years):
+        year_grp = df.loc[df.year.eq(year)]
+        for j, key_grp in year_grp.groupby("key"):
+            key_without_state = re.findall(pattern=r"^(......)", string=j)[0]
+            fig.add_trace(
+                go.Bar(x=[j],
+                    y=key_grp.loc[key_grp.variable.eq("count"), "value"],
+                    marker=dict(color=colormap[key_without_state]),
+                    showlegend=False),
+                col=i+1, row=1)
+            fig.add_trace(
+                go.Bar(x=[j],
+                    y=key_grp.loc[key_grp.variable.eq("unsolved"), "value"],
+                    marker=dict(color="grey"),
+                    showlegend=False),
+                col=i+1, row=1)
+
+    fig.update_layout(bargap=0,
+                    barmode="stack",
+                    plot_bgcolor="rgba(0,0,0,0)",
+                    paper_bgcolor="#eeeeee",
+                    margin=dict(t=25)
+                    )
+    fig.update_yaxes(gridcolor="rgba(.5,.5,.5,.5)")
+
+    # fig.update_traces(showlegend=False)
     
     return fig
