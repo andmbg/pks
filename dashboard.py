@@ -42,7 +42,7 @@ app.layout = html.Div([
 
     html.Div([
         dcc.Dropdown(
-            id="datepicker",
+            id="yearpicker",
             options=[{"label": y, "value": y} for y in all_years],
             value='2022',
             placeholder='Jahr',
@@ -69,7 +69,7 @@ app.layout = html.Div([
           })
 
 @callback(Output("fig-keypicker", "figure"),
-          Input("datepicker", "value"))
+          Input("yearpicker", "value"))
 def update_key_picker(year):
     df, colors = get_df_colors(year)
     keypicker = get_keypicker(df=df, colormap=colors, hovertemplate=hovertemplate)
@@ -78,11 +78,12 @@ def update_key_picker(year):
 
 @callback(Output("fig-timeseries", "figure"),
           Input("fig-keypicker", "clickData"),
-          Input("datepicker", "value"),
+          Input("yearpicker", "value"),
           )
 def update_ts_keys(input_json, year):
 
     key = sunburst_location(input_json)
+    df, colors = get_df_colors(year)
 
     # just special syntax for when parent is None:
     if key == "root" or key is None:
@@ -93,14 +94,14 @@ def update_ts_keys(input_json, year):
     # filter to the selected key and children
     # note, we are using the children determined in the data_one df to filter
     # the overall dataframe!
-    df_plot = data_bund_hr.loc[(data_bund_hr.key.isin(child_keys)) & (data_bund_hr.year == year)]
+    df_plot = df.loc[(df.key.isin(child_keys))]
 
     fig = px.bar(
         df_plot,
         y="key",
         x="count",
         color="key",
-        # color_discrete_map=colormap,
+        color_discrete_map=colors,
         orientation="h",
         height=500,
         # width=700,
