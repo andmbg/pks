@@ -1,24 +1,30 @@
-from src.visualization.visualize import get_colormap
-from src.data.config import colname_map, select_columns
 import sys
 from typing import Annotated
 
 import pandas as pd
 
-sys.path.append("..")  # necessary if used by a notebook
+sys.path.append("..")  # necessary when used by a notebook
+
+from src.visualization.visualize import get_colormap
+from src.data.config import colname_map, select_columns
 
 
-# angepasste Ladefunktion, übernimmt Spaltenauswahl und -Benennung sowie Historisierung
+# loading function takes over column selection, naming, historization and string cleaning:
 def _load_n_trim(dir, yr, columns):
     """
     Hilfsfunktion.
     Lädt einen DataFrame und 
     """
-    return (pd.read_excel(f"{dir}/PKS{yr}.xlsx")[columns]
+    data = (pd.read_excel(f"{dir}/PKS{yr}.xlsx")[columns]
             .set_axis(['key', 'label', 'state', 'count', 'freq', 'attempts', 'clearance'], axis=1)
             .rename(colname_map)
             .assign(**{"year": yr})
             )
+    
+    # remove non-breaking spaces
+    data.label = data.label.str.replace(u"\xa0", u" ")
+    
+    return data
 
 
 def import_data(indirpath: Annotated[str, "Quellordner mit den Excel-Dateien"],
@@ -33,6 +39,21 @@ def import_data(indirpath: Annotated[str, "Quellordner mit den Excel-Dateien"],
     # Label 'Bund' vereinheitlichen:
     data.replace({"Bund echte Zählung der Tatverdächtigen": "Bund",
                   "Bundesrepublik Deutschland": "Bund"}, inplace=True)
+    
+    # mark where the label of a key has changed compared to the previous year:
+    data = data.sort_values(["state", "key", "year"])
+    data["label_change"] = False
+    
+    data_temp = pd.DataFrame()
+    
+    for i, grp in data.groupby(["state", "key", "label"]):
+        if (i[0]=="Bund") & (i[1]=="621000"):
+            print()
+        this = grp.copy().reset_index()
+        this.loc[this.index[0], "label_change"] = True
+        data_temp = pd.concat([data_temp, this])
+    data = data_temp.sort_values(["key", "year"])
+    
     # Index und Sortierung:
     data.set_index(["year", "state", "key",
                    "label"], inplace=True)
@@ -135,7 +156,8 @@ def hierarchize_data(data: pd.DataFrame, parent_col_name="parent", level_col_nam
                     )
 
     hierarchy = pd.concat([
-        hierarchize_keys(asterisk_keys, parent_col_name=parent_col_name, level_col_name=level_col_name),
+        hierarchize_keys(
+            asterisk_keys, parent_col_name=parent_col_name, level_col_name=level_col_name),
         hierarchize_keys(numeric_keys)
     ]).set_index("key")
 
