@@ -68,10 +68,10 @@ app.layout = html.Div([
 
     html.Div([
         dcc.Graph(
-            id="fig-timeseries"
-        )
-    ]
-    ),
+            id="fig-timeseries",
+            style={"height": "600px"}
+        ),
+    ], style={"width": "100%"}),
 
 ], style={"display": "flex",
           "flexFlow": "row wrap",
@@ -109,14 +109,12 @@ def update_key_presence(input_json, year):
 
     fig = get_existence_chart(data_bund_hr, child_keys, colormap)
 
-    fig.update_layout(paper_bgcolor="#eeeeee")
-
     return (fig)
 
 
 @callback(Output("fig-timeseries", "figure"),
           Input("fig-key-presence", "clickData"))
-def update_selected_from_presence(input_json):
+def update_ts_from_presence(input_json):
 
     global key_selection
 
