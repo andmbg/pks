@@ -1,12 +1,11 @@
+from src.data.config import colname_map, select_columns
+from src.visualization.visualize import get_colormap
 import sys
 from typing import Annotated
 
 import pandas as pd
 
 sys.path.append("..")  # necessary when used by a notebook
-
-from src.visualization.visualize import get_colormap
-from src.data.config import colname_map, select_columns
 
 
 # loading function takes over column selection, naming, historization and string cleaning:
@@ -20,10 +19,10 @@ def _load_n_trim(dir, yr, columns):
             .rename(colname_map)
             .assign(**{"year": yr})
             )
-    
+
     # remove non-breaking spaces
     data.label = data.label.str.replace(u"\xa0", u" ")
-    
+
     return data
 
 
@@ -39,19 +38,19 @@ def import_data(indirpath: Annotated[str, "Quellordner mit den Excel-Dateien"],
     # Label 'Bund' vereinheitlichen:
     data.replace({"Bund echte Zählung der Tatverdächtigen": "Bund",
                   "Bundesrepublik Deutschland": "Bund"}, inplace=True)
-    
+
     # mark where the label of a key has changed compared to the previous year:
     data = data.sort_values(["state", "key", "year"])
     data["label_change"] = False
-    
+
     data_temp = pd.DataFrame()
-    
+
     for i, grp in data.groupby(["state", "key", "label"]):
         this = grp.copy().reset_index()
         this.loc[this.index[0], "label_change"] = True
         data_temp = pd.concat([data_temp, this])
     data = data_temp.sort_values(["key", "year"])
-    
+
     # Index und Sortierung:
     data.set_index(["year", "state", "key",
                    "label"], inplace=True)
@@ -90,15 +89,18 @@ def hierarchize_keys(keylist: pd.Series, parent_col_name="parent", level_col_nam
     - L = leftmost character that changes; = level of the next key
     - 
     """
-
+    level = level_col_name
+    parent = parent_col_name
+    
+    
     # the shape of the result:
     df = pd.DataFrame({"key": keylist,
-                       level_col_name: None,
-                       parent_col_name: None})
+                       level: None,
+                       parent: None})
 
     # (1) level: identify the level at which a key resides
-
-    df[level_col_name].iloc[0] = 1
+    
+    df[level].iloc[0] = 1
 
     for k in range(1, len(df)):
         key_i = df.key.iloc[k-1]
@@ -110,28 +112,40 @@ def hierarchize_keys(keylist: pd.Series, parent_col_name="parent", level_col_nam
                 this_level = digit + 1
                 break
 
-        df[level_col_name][k] = this_level
+        df[level][k] = this_level
 
     # (2) parent: infer parent from whether each key is lower, higher or equal to its predecessor
 
     # level: |dummy|       1       |  2  |  3  |  4  |  5  |  6  |
     parents = [None, df.key.iloc[0], None, None, None, None, None]
-
+    
     for k in range(1, len(df)):
-        predecessor_level = df[level_col_name].iloc[k-1]
-        this_keys_level = df[level_col_name].iloc[k]
-
+        predecessor_level = df[level].iloc[k-1]
+        this_keys_level = df[level].iloc[k]
+        
         if this_keys_level == 1:
-            df[parent_col_name].iloc[k] = None
+            df[parent].iloc[k] = None
             parents[1] = df.key.iloc[k]
+            
         elif this_keys_level > predecessor_level:
-            df[parent_col_name].iloc[k] = df.key.iloc[k-1]
+            df[parent].iloc[k] = df.key.iloc[k-1]
             parents[this_keys_level] = df.key.iloc[k]
+            
         elif this_keys_level < predecessor_level:
-            df[parent_col_name].iloc[k] = parents[this_keys_level-1]
+            # this works but should have a clearer structure.
+            search_area = df.loc[df.key.lt(df.key.iloc[k])]  # look at all above
+            search_area = search_area.loc[search_area[level].lt(df[level].iloc[k])]  # limit to higher levels
+            last_higher_level = search_area[level].iloc[-1]  # level of the last higher key
+            df[parent].iloc[k] = parents[last_higher_level]
             parents[this_keys_level] = df.key.iloc[k]
+            
         elif this_keys_level == predecessor_level:
-            df[parent_col_name].iloc[k] = df[parent_col_name].iloc[k-1]
+            # this works but should have a clearer structure.
+            search_area = df.loc[df.key.lt(df.key.iloc[k])]  # look at all above
+            search_area = search_area.loc[search_area[level].lt(df[level].iloc[k])]  # limit to higher levels
+            last_higher_level = search_area[level].iloc[-1]  # level of the last higher key
+            df[parent].iloc[k] = parents[last_higher_level]
+            parents[this_keys_level] = df.key.iloc[k]
 
     return df
 
@@ -140,23 +154,27 @@ def hierarchize_data(data: pd.DataFrame, parent_col_name="parent", level_col_nam
 
     data = data.loc[~data.key.eq("------")]
 
-    allkeys = data.key.drop_duplicates().sort_values()
+    allkeys = data.key.drop_duplicates()
 
     # extra treatment for keys containing asterisks, as they all concern one theme (theft),
     # and because they otherwise cause lots of headache in hierarchization:
     asterisk_keys = (allkeys
                      .loc[allkeys.str.contains("*", regex=False)]
+                     .sort_values()
                      .reset_index(drop=True)
                      )
     numeric_keys = (allkeys
                     .loc[~allkeys.isin(asterisk_keys)]
+                    .sort_values()
                     .reset_index(drop=True)
                     )
 
+    # every key gets a parent based on the algorithm in hierarchize_keys():
     hierarchy = pd.concat([
         hierarchize_keys(
             asterisk_keys, parent_col_name=parent_col_name, level_col_name=level_col_name),
-        hierarchize_keys(numeric_keys)
+        hierarchize_keys(
+            numeric_keys, parent_col_name=parent_col_name, level_col_name=level_col_name)
     ]).set_index("key")
 
     # join this hierarchy information to the actual crime data:
