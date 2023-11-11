@@ -11,6 +11,8 @@ from dash import Dash, dcc, html, Input, Output, callback
 from src.data.import_data_pks import hierarchize_data
 from src.visualization.visualize import sunburst_location, get_keypicker, get_existence_chart, get_timeseries
 
+# how many keys we want displayed at most at the same time:
+MAXKEYS = 5
 
 def get_df_colors(year):
     df = data_bund_hr.loc[data_bund_hr.year.eq(year)]
@@ -23,7 +25,7 @@ data_raw["selection_color"] = ""
 all_years = data_raw.year.unique()
 data_bund = data_raw.loc[data_raw.state == "Bund"]
 
-ts_key_selection = [None, None, None]
+ts_key_selection = []
 
 # For each year, produce an independent hierarchy. This is necessary, as the hierarchy relationships
 # in the "crime catalogue" change across years, and contradictory relationships disable plotting:
@@ -49,7 +51,7 @@ keypicker = get_keypicker(df=df, colormap=colors, hovertemplate=hovertemplate)
 # timeseries = get_timeseries(df)
 
 app.layout = html.Div([
-
+    
     html.Div([
         dcc.Dropdown(
             id="yearpicker",
@@ -77,6 +79,8 @@ app.layout = html.Div([
             style={"height": "600px"}
         ),
     ], style={"width": "100%"}),
+    
+    dcc.Store(id="keystore"),
 
 ], style={"display": "flex",
           "flexFlow": "row wrap",
@@ -84,6 +88,10 @@ app.layout = html.Div([
           })
 
 
+
+
+# Update Sunburst plot
+# --------------------
 @callback(Output("fig-keypicker", "figure"),
           Input("yearpicker", "value"))
 def update_key_picker(year):
@@ -96,6 +104,10 @@ def update_key_picker(year):
     return keypicker
 
 
+
+
+# Update Presence chart
+# ---------------------
 @callback(Output("fig-key-presence", "figure"),
           Input("fig-keypicker", "clickData"),
         #   Input("yearpicker", "value")
@@ -118,26 +130,51 @@ def update_key_presence(input_json):
     return (fig)
 
 
-@callback(Output("fig-timeseries", "figure"),
-          Input("fig-key-presence", "clickData"))
-def update_ts_from_presence(input_json):
+
+# Update key store from presence chart
+# ------------------------------------
+@callback(Output("keystore", "data", allow_duplicate=True),
+          Input("fig-key-presence", "clickData"),
+          prevent_initial_call=True)
+def update_keystore_from_presencechart(input_json):
 
     global ts_key_selection
-
     selected_key = input_json["points"][0]["y"]
+    
+    if len(ts_key_selection) < MAXKEYS:
+        ts_key_selection.append(selected_key)
+    
+    return ts_key_selection
 
-    # push this key into the selection, drop oldest if necessary:
-    droppable_key = ts_key_selection[0]
-    ts_key_selection = ts_key_selection[1:]
-    ts_key_selection.append(selected_key)
 
-    selected_keys_states = []
-    for i in ts_key_selection:
-        if i is not None:
-            selected_keys_states.append(
-                {"state": "Bund", "key": i}
-            )
 
+
+# Update key store from time series
+# ---------------------------------
+@callback(Output("keystore", "data"),
+          Input("fig-timeseries", "clickData"),
+          prevent_initial_call=True)
+def update_keystore_from_timeseries(input_json):
+    
+    global ts_key_selection
+    key_to_deselect = input_json["points"][0]["x"][0:6]
+    ts_key_selection.remove(key_to_deselect)
+    
+    return ts_key_selection    
+
+
+
+
+# Update timeseries from keystore
+# -------------------------------
+@callback(Output("fig-timeseries", "figure"),
+          Input("keystore", "data"),
+          prevent_initial_call=True)
+def update_ts_from_keystore(keylist):
+
+    # for now, focus only on Bund:
+    selected_keys_states = [{"state": "Bund", "key": i} for i in keylist]
+    
     df_ts = pd.concat([
         data_bund_hr_all.loc[(data_bund_hr_all.state.eq(i["state"])) & (data_bund_hr_all.key.eq(i["key"]))] for i in selected_keys_states
     ])

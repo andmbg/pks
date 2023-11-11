@@ -187,6 +187,24 @@ def hierarchize_data(data: pd.DataFrame, parent_col_name="parent", level_col_nam
     return (data_hier)
 
 
+def clean_labels(data: pd.DataFrame) -> pd.DataFrame:
+    
+    removables = [
+        r"§.*$",
+        r".und zwar.*$",
+        r" darunter:.*$",
+        r".gemäß.?$",
+        r".gem\..?$",
+        r".davon:.?$",
+        r".nach.?$",
+    ]
+    
+    for removable in removables:
+        data.label = data.label.str.replace(removable, "", regex=True)
+    
+    return data
+
+
 if __name__ == "__main__":
 
     # transport the data from Excel files to a processable form without much processing:
@@ -195,7 +213,10 @@ if __name__ == "__main__":
 
     data = pd.read_parquet("data/interim/pks.parquet")
 
-    data_hr_glob = hierarchize_data(data)
+    # clean labels from §§ and so on:
+    data_clean = clean_labels(data)
+
+    data_hr_glob = hierarchize_data(data_clean)
     global_colormap = get_colormap(data_hr_glob)
     data_hr_glob["color"] = data_hr_glob.key.apply(
         lambda key: global_colormap[key])

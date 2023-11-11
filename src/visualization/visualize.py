@@ -213,7 +213,7 @@ def get_timeseries(df):
     df = df.copy()
     
     df.state = df.state.apply(lambda x: statemap[x])
-    df["keystate"] = df.key + "<br>" + df.state
+    df["keystate"] = df.key + " (" + df.state + ")"
     timerange = [min(df.year), max(df.year)]
     years = list(range(timerange[0], timerange[1]+1))
     # max bar height:
@@ -268,7 +268,8 @@ def get_timeseries(df):
     fig.update_layout(bargap=0.001,
                     barmode="stack",
                     plot_bgcolor="rgba(0,0,0,0)",
-                    margin=dict(t=25),
+                    paper_bgcolor="rgba(0,0,0,0)",
+                    margin=dict(t=25, r=20),
                     legend=dict(yanchor="top",
                                 xanchor="left",
                                 y=.99,
