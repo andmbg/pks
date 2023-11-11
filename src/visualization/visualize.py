@@ -151,7 +151,7 @@ def get_existence_chart(df, keys, colormap, xaxis="year", yaxis="key", labels="l
                 line_width=4,
                 textposition="top right",
                 customdata=np.stack((grp[labels], grp["count"]), axis=-1),
-                hovertemplate="<b>%{y}</b> (%{x}):<br><br>%{customdata[0]},<br>%{customdata[1]} Fälle<extra></extra>"
+                hovertemplate="<b>%{y}</b> (%{x}):<br><br>%{customdata[0]}<br>%{customdata[1]} Fälle<extra></extra>"
             )
         )
 
@@ -210,12 +210,11 @@ def get_timeseries(df):
     "Bund": "D"
     }
 
-    df = df.copy()
-    
     df.state = df.state.apply(lambda x: statemap[x])
     df["keystate"] = df.key + " (" + df.state + ")"
     timerange = [min(df.year), max(df.year)]
     years = list(range(timerange[0], timerange[1]+1))
+
     # max bar height:
     counts1 = df.loc[df.variable.eq("count"), "value"].values
     counts2 = df.loc[df.variable.eq("unsolved"), "value"].values
@@ -247,8 +246,13 @@ def get_timeseries(df):
                     marker=dict(color=colormap[key_without_state]),
                     showlegend=( j in legend_todo ),
                     name=committed.label.iloc[0],
-                    customdata=np.stack((committed["key"], committed["year"], committed["label"], unsolved["value"]), axis=-1),
-                    hovertemplate="<b>%{customdata[2]}</b><br>(Schlüssel %{customdata[0]})<br><br>%{customdata[1]}:<br>%{y} Fälle,<br>%{customdata[3]} unaufgeklärt<extra></extra>"
+                    customdata=np.stack((
+                        committed["key"],
+                        committed["year"],
+                        committed["label"],
+                        unsolved["value"],
+                        committed["clearance_rate"]), axis=-1),
+                    hovertemplate="<b>%{customdata[2]}</b><br>(Schlüssel %{customdata[0]})<br><br>%{customdata[1]}:<br>%{y} Fälle,<br>%{customdata[4]} % Aufklärungsrate<extra></extra>"
                     ),
                 col=i+1, row=1)
             

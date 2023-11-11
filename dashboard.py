@@ -14,6 +14,7 @@ from src.visualization.visualize import sunburst_location, get_keypicker, get_ex
 # how many keys we want displayed at most at the same time:
 MAXKEYS = 5
 
+
 def get_df_colors(year):
     df = data_bund_hr.loc[data_bund_hr.year.eq(year)]
     colors = {k: grp.color.iloc[0] for k, grp in df.groupby("key")}
@@ -51,7 +52,7 @@ keypicker = get_keypicker(df=df, colormap=colors, hovertemplate=hovertemplate)
 # timeseries = get_timeseries(df)
 
 app.layout = html.Div([
-    
+
     html.Div([
         dcc.Dropdown(
             id="yearpicker",
@@ -79,15 +80,13 @@ app.layout = html.Div([
             style={"height": "600px"}
         ),
     ], style={"width": "100%"}),
-    
+
     dcc.Store(id="keystore"),
 
 ], style={"display": "flex",
           "flexFlow": "row wrap",
           "alignItems": "center",  # rechter Plot vertikal zentriert
           })
-
-
 
 
 # Update Sunburst plot
@@ -104,13 +103,11 @@ def update_key_picker(year):
     return keypicker
 
 
-
-
 # Update Presence chart
 # ---------------------
 @callback(Output("fig-key-presence", "figure"),
           Input("fig-keypicker", "clickData"),
-        #   Input("yearpicker", "value")
+          #   Input("yearpicker", "value")
           )
 def update_key_presence(input_json):
     """
@@ -118,17 +115,19 @@ def update_key_presence(input_json):
     """
 
     key = sunburst_location(input_json)
-    colormap = {k: grp.color.iloc[0] for k, grp in data_bund_hr_all.groupby("key")}
+    colormap = {k: grp.color.iloc[0]
+                for k, grp in data_bund_hr_all.groupby("key")}
 
     if key == "root" or key is None:  # just special syntax for when parent is None
-        child_keys = data_bund_hr_all.loc[data_bund_hr_all.parent.isna()].key.unique()
+        child_keys = data_bund_hr_all.loc[data_bund_hr_all.parent.isna(
+        )].key.unique()
     else:
-        child_keys = data_bund_hr_all.loc[data_bund_hr_all.parent == key].key.unique()
+        child_keys = data_bund_hr_all.loc[data_bund_hr_all.parent == key].key.unique(
+        )
 
     fig = get_existence_chart(data_bund_hr_all, child_keys, colormap)
 
     return (fig)
-
 
 
 # Update key store from presence chart
@@ -140,13 +139,11 @@ def update_keystore_from_presencechart(input_json):
 
     global ts_key_selection
     selected_key = input_json["points"][0]["y"]
-    
+
     if len(ts_key_selection) < MAXKEYS:
         ts_key_selection.append(selected_key)
-    
+
     return ts_key_selection
-
-
 
 
 # Update key store from time series
@@ -155,14 +152,12 @@ def update_keystore_from_presencechart(input_json):
           Input("fig-timeseries", "clickData"),
           prevent_initial_call=True)
 def update_keystore_from_timeseries(input_json):
-    
+
     global ts_key_selection
     key_to_deselect = input_json["points"][0]["x"][0:6]
     ts_key_selection.remove(key_to_deselect)
-    
-    return ts_key_selection    
 
-
+    return ts_key_selection
 
 
 # Update timeseries from keystore
@@ -174,7 +169,7 @@ def update_ts_from_keystore(keylist):
 
     # for now, focus only on Bund:
     selected_keys_states = [{"state": "Bund", "key": i} for i in keylist]
-    
+
     df_ts = pd.concat([
         data_bund_hr_all.loc[(data_bund_hr_all.state.eq(i["state"])) & (data_bund_hr_all.key.eq(i["key"]))] for i in selected_keys_states
     ])
@@ -182,8 +177,9 @@ def update_ts_from_keystore(keylist):
     df_ts = df_ts[["key", "state", "year",
                    "label", "count", "clearance", "color"]]
     df_ts["unsolved"] = df_ts["count"] - df_ts["clearance"]
+    df_ts["clearance_rate"] = df_ts.apply(lambda r: round(r["clearance"] / r["count"] * 100, 1), axis=1)
     df_ts = pd.melt(df_ts,
-                    id_vars=["key", "state", "year", "label", "color"],
+                    id_vars=["key", "state", "year", "label", "color", "clearance_rate"],
                     value_vars=["count", "unsolved"],
                     )
 
