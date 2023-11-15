@@ -241,5 +241,14 @@ if __name__ == "__main__":
         lambda key: global_colormap[key])
 
     data_hr = data_hr.drop(["level", "parent"], axis=1)
+    
+    # manuelle Löschung störender Summenschlüssel
+    data_hr = data_hr.loc[~data_hr.key.isin([
+        "900230", "900250", "900251", "900252", "900253", "900260", "900261",  # => englischsprachig
+        "943520",  # => bandenmäßiger Wohnungseinbruchdiebstahl mit Tageswohnungseinbruch (very special)
+        "972500",  # => illegale Einreise + Aufenthalt (in 725... enthalten)
+        # "973000",  # => Rauschgiftdelikte (in 730... enthalten)
+        "980100",  # => "Cybercrime insg."
+        ])]
 
     data_hr.to_parquet("data/processed/pks.parquet")

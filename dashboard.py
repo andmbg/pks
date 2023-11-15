@@ -1,7 +1,7 @@
 import re
 
 import pandas as pd
-from dash import Dash, dcc, html, Input, Output, callback
+from dash import Dash, dcc, html, Input, Output, callback, dash_table
 
 from src.data.import_data_pks import hierarchize_data
 from src.visualization.visualize import (
@@ -18,6 +18,8 @@ MAXKEYS = 5
 data_raw = pd.read_parquet("data/processed/pks.parquet")
 all_years = data_raw.year.unique()
 data_bund = data_raw.loc[data_raw.state == "Bund"]
+catalog = data_bund[["key", "label"]].drop_duplicates(subset="key")
+catalog.label = catalog.label.str.replace("<br>", "\n")
 
 ts_key_selection = []
 reset_n_clicks_old = 0
@@ -51,6 +53,25 @@ app.layout = html.Div([
         ),
 
     ], style={"flex": 1}),
+    
+    html.Div([
+        dash_table.DataTable(
+            columns=[
+                {"name": "Schlüssel", "id": "key", "type": "text"},
+                {"name": "Delikt", "id": "label", "type": "text"},
+            ],
+            data=catalog.to_dict("records"),
+            filter_action="native",
+            style_table={
+                "height": 10,
+            },
+            style_data={
+                "width": {"key": "100px", "label": "200px"},# "midWidth": "150px", "maxWidth": "150px",
+                "overflow": "hidden",
+                "textOverflow": "ellipsis",
+            }
+        )
+    ], style={"flex": 1, "backgroundColor": "#dddddd"}),
 
     html.Div([
         dcc.Graph(
@@ -71,38 +92,12 @@ app.layout = html.Div([
         ),
     ], style={"width": "100%"}),
     
-    html.Div(id="clickdata"),
-
     dcc.Store(id="keystore"),
 
 ], style={"display": "flex",
           "flexFlow": "row wrap",
           "alignItems": "center",  # rechter Plot vertikal zentriert
           })
-
-# DEBUG: analyse click data from sunburst
-@callback(Output("clickdata", "children"),
-          Input("fig-keypicker", "clickData"))
-def debug(input_json):
-    clickData = input_json
-
-    # identifying location:
-    # variables from the clickData:
-    clickData = clickData["points"][0]
-    entry = clickData["entry"]
-    label = clickData["label"]
-    path_match = re.search(r"([0-9*]{6})/$", clickData["currentPath"])
-
-    path_leaf = path_match[1] if path_match is not None else "root"
-    
-    outdict = {
-        "entry": entry,
-        "label": label,
-        "path_leaf": path_leaf,
-        "current_path": clickData["currentPath"]
-    }
-    
-    return(str(outdict))
 
 
 # Update Presence chart

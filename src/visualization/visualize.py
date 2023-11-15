@@ -151,7 +151,7 @@ def get_existence_chart(df, keys, colormap, xaxis="year", yaxis="key", labels="l
     :param newname: name of the boolean attribute that signals if the current entry corresponds
         to a change in the label of the same key, compared to the previous year
     """
-    df = df.loc[df.key.isin(keys)]
+    df = df.loc[df.key.isin(keys)].copy()
 
     df["firstlabel"] = df[labels]
 
@@ -163,7 +163,11 @@ def get_existence_chart(df, keys, colormap, xaxis="year", yaxis="key", labels="l
 
     for i, grp in df.groupby([yaxis, "state"]):
         this_group = grp.sort_values(xaxis)
-        this_group["firstlabel"].iloc[1:] = ""
+        
+        firstlabel_list = this_group["firstlabel"].values
+        firstlabel_list[1:] = ""
+        this_group["firstlabel"] = firstlabel_list
+        
         df2 = pd.concat([df2, this_group])
     
     df = df2.copy()
@@ -248,7 +252,7 @@ def get_timeseries(df):
     "Rheinland-Pfalz": "RP",
     "Bund": "D"
     }
-    df.stateabbrev = df.state.apply(lambda x: state_abbrev_map[x])
+    df["stateabbrev"] = df.state.apply(lambda x: state_abbrev_map[x])
     df["keystate"] = df.key + " (" + df.stateabbrev + ")"
     
     years = list(range(min(df.year), max(df.year)+1))
