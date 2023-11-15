@@ -20,7 +20,34 @@ def _css_rainbow(N=5, s=1, v=.75):
     return hex_out
 
 
-def get_colormap(df: pd.DataFrame, keycolumn: str = "key") -> dict:
+def _lt(x: str, y: str) -> bool:
+    """
+    Helper: compare keys even when they contain asterisks.
+    * couns as "less than zero".
+    """
+    # einfach:
+    try:
+        if int(x) < int(y):
+            return True
+
+    # Handarbeit:
+    except ValueError:
+        testing_range = min(len(x), len(y))
+
+        for i in range(testing_range):
+            if x[i] == y[i]:
+                continue
+
+            if x[i] in "0123456789" and y[i] == "*":
+                return False
+            
+            if x[i] == "*" and y[i] in "0123456789":
+                return True
+
+        return False
+
+
+def make_df_colormap(df: pd.DataFrame, keycolumn: str = "key") -> dict:
     """
     Derive from a crime stats dataset a color map {"key": "CSS color"} that
     for each key distributes CSS colors among its children such that they
@@ -39,6 +66,10 @@ def get_colormap(df: pd.DataFrame, keycolumn: str = "key") -> dict:
     return colormap
 
 
+def color_map_from_color_column(df):
+    return {k: grp.color.iloc[0] for k, grp in df.groupby("key")}
+
+
 def sunburst_location(input_json: str):
     """
     Take the clickdata output of a sunburst plot and identify which item
@@ -51,7 +82,6 @@ def sunburst_location(input_json: str):
     if input_json is None or input_json == "null":
         return "root"
 
-    # clickData = json.loads(input_json)
     clickData = input_json
 
     # identifying location:
@@ -59,7 +89,7 @@ def sunburst_location(input_json: str):
     clickData = clickData["points"][0]
     entry = clickData["entry"]
     label = clickData["label"]
-    path_match = re.search(r"([0-9]{6})/$", clickData["currentPath"])
+    path_match = re.search(r"([0-9*]{6})/$", clickData["currentPath"])
 
     path_leaf = path_match[1] if path_match is not None else "root"
 
@@ -68,38 +98,45 @@ def sunburst_location(input_json: str):
         location = label
 
     else:
-        if int(entry) < int(label):
-            location = label
-
         if entry == label:
             if path_leaf is None:
                 location = "root"
 
             else:
                 location = path_leaf
+        
+        elif _lt(entry, label):
+            location = label
 
     return location
 
 
 def get_keypicker(df, colormap, hovertemplate):
+    
+    df_plot = df[["key", "label", "parent"]].drop_duplicates(subset="key")
+    
+    # count children of each key for information in the plot:
+    key_children_dict = df_plot.groupby("parent").agg(len).key.to_dict()
+    df_plot["nchildren"] = df_plot.key.apply(lambda k: key_children_dict.get(k, 0))
 
-    return (
-        px.sunburst(df,
-                    names='key',
-                    # values=,
-                    parents='parent',
-                    color='key',
-                    color_discrete_map=colormap,
-                    hover_data=['label', 'key', 'count'],
-                    maxdepth=2,
-                    height=700,
-                    # width=700
-                    )
-        .update_layout(
-            margin=dict(t=15, r=15, b=15, l=15))
-        .update_traces(hovertemplate=hovertemplate)
-        .update_coloraxes(showscale=False)
-    )
+    
+    
+    fig = px.sunburst(
+        df_plot,
+        names='key',
+        parents='parent',
+        color='key',
+        color_discrete_map=colormap,
+        hover_data=['label', 'key', 'nchildren'],
+        maxdepth=2,
+        height=700,
+        # width=700
+    ).update_layout(margin=dict(t=15, r=15, b=15, l=15)
+    ).update_traces(hovertemplate=hovertemplate,
+                    leaf_opacity=1,
+    ).update_coloraxes(showscale=False)
+
+    return fig
 
 
 def get_existence_chart(df, keys, colormap, xaxis="year", yaxis="key", labels="label", newname="label_change"):
@@ -186,11 +223,13 @@ def get_existence_chart(df, keys, colormap, xaxis="year", yaxis="key", labels="l
 
 def get_timeseries(df):
     """
-    :param df: Dataframe containing 1-n keys (only the data to be displayed - filter beforehand!)
+    :param df: Dataframe containing 1..n keys (only the data to be displayed - filter beforehand!)
     """
-    colormap = {i: grp.loc[grp.index[0], "color"] for i, grp in df.groupby("key")}
+    # colormap = {i: grp.loc[grp.index[0], "color"] for i, grp in df.groupby("key")}
+    colormap = color_map_from_color_column(df)
 
-    statemap = {
+    # plot df has one "KKKKKK (ST)" key replacing the "key" and "state" cols:
+    state_abbrev_map = {
     "Brandenburg": "BB",
     "Berlin": "BE",
     "Baden-Württemberg": "BW",
@@ -209,16 +248,16 @@ def get_timeseries(df):
     "Rheinland-Pfalz": "RP",
     "Bund": "D"
     }
-
-    df.state = df.state.apply(lambda x: statemap[x])
-    df["keystate"] = df.key + " (" + df.state + ")"
-    timerange = [min(df.year), max(df.year)]
-    years = list(range(timerange[0], timerange[1]+1))
+    df.stateabbrev = df.state.apply(lambda x: state_abbrev_map[x])
+    df["keystate"] = df.key + " (" + df.stateabbrev + ")"
+    
+    years = list(range(min(df.year), max(df.year)+1))
 
     # max bar height:
-    counts1 = df.loc[df.variable.eq("count"), "value"].values
-    counts2 = df.loc[df.variable.eq("unsolved"), "value"].values
-    maxheight = pd.DataFrame({"a": counts1, "b": counts2}).apply(sum, axis=1).max()
+    # counts1 = df.loc[df.variable.eq("count"), "value"].values
+    # counts2 = df.loc[df.variable.eq("unsolved"), "value"].values
+    # maxheight = pd.DataFrame({"a": counts1, "b": counts2}).apply(sum, axis=1).max()
+    maxheight = df["count"].max() * 1.2
 
     fig = make_subplots(cols=len(years), shared_yaxes=True,
                         horizontal_spacing=.01,
@@ -237,12 +276,20 @@ def get_timeseries(df):
         for j, key_grp in year_grp.groupby("keystate"):
             key_without_state = re.findall(pattern=r"^(......)", string=j)[0]
             
-            committed = key_grp.loc[key_grp.variable.eq("count")]
+            committed = key_grp.loc[key_grp.variable.eq("clearance")]
             unsolved = key_grp.loc[key_grp.variable.eq("unsolved")]
+            
+            hovertemplate = "<br>".join([
+                "%{customdata[2]}",
+                "(Schlüssel %{customdata[0]})",
+                "Fälle im Jahr %{customdata[1]}: %{customdata[5]}",
+                "Unaufgeklärt: %{customdata[3]}",
+                "Aufklärungsrate: %{customdata[4]} %<extra></extra>"
+            ])
             
             fig.add_trace(
                 go.Bar(x=[j],
-                    y=committed.value,
+                    y=committed["value"],
                     marker=dict(color=colormap[key_without_state]),
                     showlegend=( j in legend_todo ),
                     name=committed.label.iloc[0],
@@ -251,8 +298,10 @@ def get_timeseries(df):
                         committed["year"],
                         committed["label"],
                         unsolved["value"],
-                        committed["clearance_rate"]), axis=-1),
-                    hovertemplate="<b>%{customdata[2]}</b><br>(Schlüssel %{customdata[0]})<br><br>%{customdata[1]}:<br>%{y} Fälle,<br>%{customdata[4]} % Aufklärungsrate<extra></extra>"
+                        committed["clearance_rate"],
+                        committed["count"],
+                        ), axis=-1),
+                    hovertemplate=hovertemplate,
                     ),
                 col=i+1, row=1)
             
@@ -288,3 +337,4 @@ def get_timeseries(df):
     # fig.update_traces(showlegend=False)
     
     return fig
+

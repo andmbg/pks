@@ -1,9 +1,12 @@
-from src.data.config import colname_map, select_columns
-from src.visualization.visualize import get_colormap
 import sys
 from typing import Annotated
+from textwrap import wrap
 
 import pandas as pd
+
+from src.data.config import colname_map, select_columns
+from src.visualization.visualize import make_df_colormap
+
 
 sys.path.append("..")  # necessary when used by a notebook
 
@@ -38,18 +41,6 @@ def import_data(indirpath: Annotated[str, "Quellordner mit den Excel-Dateien"],
     # Label 'Bund' vereinheitlichen:
     data.replace({"Bund echte Zählung der Tatverdächtigen": "Bund",
                   "Bundesrepublik Deutschland": "Bund"}, inplace=True)
-
-    # mark where the label of a key has changed compared to the previous year:
-    data = data.sort_values(["state", "key", "year"])
-    data["label_change"] = False
-
-    data_temp = pd.DataFrame()
-
-    for i, grp in data.groupby(["state", "key", "label"]):
-        this = grp.copy().reset_index()
-        this.loc[this.index[0], "label_change"] = True
-        data_temp = pd.concat([data_temp, this])
-    data = data_temp.sort_values(["key", "year"])
 
     # Index und Sortierung:
     data.set_index(["year", "state", "key",
@@ -189,18 +180,46 @@ def hierarchize_data(data: pd.DataFrame, parent_col_name="parent", level_col_nam
 
 def clean_labels(data: pd.DataFrame) -> pd.DataFrame:
     
+    # nonbreaking spaces
+    data.label = data.label.str.replace(r"[\u00A0]", " ", regex=True)
+    
+    # leading/trailing spaces
+    data.label = data.label.str.strip()
+
     removables = [
         r"§.*$",
         r".und zwar.*$",
-        r" darunter:.*$",
+        r".darunter:.*$",
         r".gemäß.?$",
         r".gem\..?$",
         r".davon:.?$",
         r".nach.?$",
     ]
-    
     for removable in removables:
         data.label = data.label.str.replace(removable, "", regex=True)
+    
+    
+    
+    # linebreak for especially long labels:
+    data.label = data.apply(lambda x: "<br>".join(wrap(x.label, 100)), axis=1)
+    
+    return data
+
+
+def mark_labelchange(data: pd.DataFrame) -> pd.DataFrame:
+    """
+    Mark where the label of a key has changed compared to the previous year.
+    """
+    data = data.sort_values(["state", "key", "year"])
+    data["label_change"] = False
+
+    data_temp = pd.DataFrame()
+
+    for i, grp in data.groupby(["state", "key", "label"]):
+        this = grp.copy().reset_index()
+        this.loc[this.index[0], "label_change"] = True
+        data_temp = pd.concat([data_temp, this])
+    data = data_temp.sort_values(["key", "year"])
     
     return data
 
@@ -213,14 +232,14 @@ if __name__ == "__main__":
 
     data = pd.read_parquet("data/interim/pks.parquet")
 
-    # clean labels from §§ and so on:
-    data_clean = clean_labels(data)
-
-    data_hr_glob = hierarchize_data(data_clean)
-    global_colormap = get_colormap(data_hr_glob)
-    data_hr_glob["color"] = data_hr_glob.key.apply(
+    # clean labels from §§ and so on, then mark label changes:
+    data_clean = mark_labelchange(clean_labels(data))
+    
+    data_hr = hierarchize_data(data_clean)
+    global_colormap = make_df_colormap(data_hr)
+    data_hr["color"] = data_hr.key.apply(
         lambda key: global_colormap[key])
 
-    data_hr_glob = data_hr_glob.drop(["level", "parent"], axis=1)
+    data_hr = data_hr.drop(["level", "parent"], axis=1)
 
-    data_hr_glob.to_parquet("data/processed/pks.parquet")
+    data_hr.to_parquet("data/processed/pks.parquet")
