@@ -9,7 +9,7 @@ from src.visualization.visualize import (
     empty_timeseries,
     sunburst_location,
     get_keypicker,
-    get_existence_chart,
+    get_presence_chart,
     get_timeseries,
     color_map_from_color_column
 )
@@ -32,18 +32,12 @@ catalog["label_key"] = catalog.apply(lambda row: row.label + " (" + row.key + ")
 ts_key_selection = []
 reset_n_clicks_old = 0
 
-hovertemplate = """
-                <b>%{customdata[1]}</b><br><br>
-                %{customdata[0]}<br>
-                (%{customdata[2]} Unterschlüssel)
-                <extra></extra>"""
-hovertemplate = re.sub(r"([ ]{2,})|(\n)", "", hovertemplate)
+
 
 # initial sunburst plot:
 keypicker = get_keypicker(
     catalog,
     colormap=color_map_from_color_column(data_bund),
-    hovertemplate=hovertemplate
 )
 
 
@@ -147,7 +141,7 @@ def update_presence_chart(keypicker_parent, table_data, active_tab):
     colormap = {k: grp.color.iloc[0]
                 for k, grp in data_bund.groupby("key")}
     
-    fig = get_existence_chart(data_bund, selected_keys, colormap)
+    fig = get_presence_chart(data_bund, selected_keys, colormap)
 
     return (fig)
 

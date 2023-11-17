@@ -111,13 +111,18 @@ def sunburst_location(input_json: str):
     return location
 
 
-def get_keypicker(df, colormap, hovertemplate):
+def get_keypicker(df, colormap):
     
     # count children of each key for information in the plot:
     key_children_dict = df.groupby("parent").agg(len).key.to_dict()
     df["nchildren"] = df.key.apply(lambda k: key_children_dict.get(k, 0))
 
-    
+    hovertemplate = """
+                <b>%{customdata[1]}</b><br><br>
+                %{customdata[0]}<br>
+                (%{customdata[2]} Unterschlüssel)
+                <extra></extra>"""
+    hovertemplate = re.sub(r"([ ]{2,})|(\n)", "", hovertemplate)
     
     fig = px.sunburst(
         df,
@@ -137,7 +142,7 @@ def get_keypicker(df, colormap, hovertemplate):
     return fig
 
 
-def get_existence_chart(df, keys, colormap, xaxis="year", yaxis="key", labels="label", newname="label_change"):
+def get_presence_chart(df, keys, colormap, xaxis="year", yaxis="key", labels="label", newname="label_change"):
     """
     Returns an existence chart indicating a set of keys and their existence through the years.
 
