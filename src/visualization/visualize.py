@@ -113,16 +113,14 @@ def sunburst_location(input_json: str):
 
 def get_keypicker(df, colormap, hovertemplate):
     
-    df_plot = df[["key", "label", "parent"]].drop_duplicates(subset="key")
-    
     # count children of each key for information in the plot:
-    key_children_dict = df_plot.groupby("parent").agg(len).key.to_dict()
-    df_plot["nchildren"] = df_plot.key.apply(lambda k: key_children_dict.get(k, 0))
+    key_children_dict = df.groupby("parent").agg(len).key.to_dict()
+    df["nchildren"] = df.key.apply(lambda k: key_children_dict.get(k, 0))
 
     
     
     fig = px.sunburst(
-        df_plot,
+        df,
         names='key',
         parents='parent',
         color='key',

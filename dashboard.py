@@ -1,7 +1,8 @@
 import re
 
 import pandas as pd
-from dash import Dash, dcc, html, Input, Output, callback, dash_table
+from dash import Dash, dcc, html, Input, Output, State, callback, dash_table
+import dash_bootstrap_components as dbc
 
 from src.data.import_data_pks import hierarchize_data
 from src.visualization.visualize import (
@@ -18,16 +19,15 @@ MAXKEYS = 5
 data_raw = pd.read_parquet("data/processed/pks.parquet")
 all_years = data_raw.year.unique()
 data_bund = data_raw.loc[data_raw.state == "Bund"]
-catalog = data_bund[["key", "label"]].drop_duplicates(subset="key")
-catalog.label = catalog.label.str.replace("<br>", "\n")
-
-ts_key_selection = []
-reset_n_clicks_old = 0
 
 # infer key hierarchy from key numbers:
 data_bund = hierarchize_data(data_bund)
 
-app = Dash(__name__)
+catalog = data_bund[["key", "label", "parent"]].drop_duplicates(subset="key")
+catalog.label = catalog.label.str.replace("<br>", "\n")
+
+ts_key_selection = []
+reset_n_clicks_old = 0
 
 hovertemplate = """
                 <b>%{customdata[1]}</b><br><br>
@@ -38,91 +38,167 @@ hovertemplate = re.sub(r"([ ]{2,})|(\n)", "", hovertemplate)
 
 # initial sunburst plot:
 keypicker = get_keypicker(
-    data_bund,
+    catalog,
     colormap=color_map_from_color_column(data_bund),
     hovertemplate=hovertemplate
 )
 
-app.layout = html.Div([
 
-    html.Div([
+app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
+
+
+# Sunburst:
+fig_keypicker = dcc.Graph(
+    id='fig-keypicker',
+    figure=keypicker
+)
+
+# DataTable
+table_search = dash_table.DataTable(
+    id="table-textsearch",
+    columns=[
+        {"name": "Schlüssel", "id": "key", "type": "text"},
+        {"name": "Suchen:", "id": "label", "type": "text"},
+    ],
+    data=catalog.to_dict("records"),
+    filter_action="native",
+    page_size=10,
+    style_data={
+        # "midWidth": "150px", "maxWidth": "150px",
+        # "width": {"key": "10px", "label": "200px"},
+        "overflow": "hidden",
+        "textOverflow": "ellipsis",
+    }
+)
+
+# Presence
+fig_presence = dcc.Graph(
+    id='fig-key-presence'
+)
+
+# Reset
+button_reset = html.Button(
+    "Leeren",
+    id="reset",
+    n_clicks=0
+)
+
+# Timeseries
+fig_timeseries = dcc.Graph(
+    id="fig-timeseries",
+    style={"height": "600px"}
+)
+
+
+app.layout = dbc.Container(
+    [
+        # Store
+        dcc.Store(id="keystore"),
         
-        dcc.Graph(
-            id='fig-keypicker',
-            figure=keypicker
-        ),
-
-    ], style={"flex": 1}),
-    
-    html.Div([
-        dash_table.DataTable(
-            columns=[
-                {"name": "Schlüssel", "id": "key", "type": "text"},
-                {"name": "Delikt", "id": "label", "type": "text"},
+        dbc.Tabs(
+            [
+                dbc.Tab([fig_keypicker], label="Blättern", tab_id="keypicker"),
+                dbc.Tab([table_search], label="Suchen", tab_id="textsearch"),
             ],
-            data=catalog.to_dict("records"),
-            filter_action="native",
-            style_table={
-                "height": 10,
-            },
-            style_data={
-                "width": {"key": "100px", "label": "200px"},# "midWidth": "150px", "maxWidth": "150px",
-                "overflow": "hidden",
-                "textOverflow": "ellipsis",
-            }
-        )
-    ], style={"flex": 1, "backgroundColor": "#dddddd"}),
-
-    html.Div([
-        dcc.Graph(
-            id='fig-key-presence'
+            id="tabs",
+            active_tab="keypicker",
         ),
-    ], style={"flex": 1}),
+        
+        html.Div(id="tabdata",
+                 style={"height": "50px"}),
+        
+        html.Div([fig_presence]),
+        
+        html.Div([button_reset]),
+        
+        html.Div([fig_timeseries])
+    ]
+)
+
+# Display selection from keypicker:
+@callback(Output("tabdata", "children"),
+          Input("fig-keypicker", "clickData"),
+          Input("table-textsearch", "derived_viewport_data"),
+          Input("tabs", "active_tab"))
+def display_keypicker_data(keypicker_parent, table_data, active_tab):
     
-    html.Div([
-        html.Button("Leeren",
-                    id="reset",
-                    n_clicks=0)
-    ]),
-
-    html.Div([
-        dcc.Graph(
-            id="fig-timeseries",
-            style={"height": "600px"}
-        ),
-    ], style={"width": "100%"}),
+    if active_tab == "keypicker":
+        key = sunburst_location(keypicker_parent)
+        
+        if key == "root" or key is None:  # just special syntax for when parent is None
+            child_keys = data_bund.loc[data_bund.parent.isna(
+            )].key.unique()
+        else:
+            child_keys = data_bund.loc[data_bund.parent == key].key.unique(
+            )
+        selected_keys = child_keys
     
-    dcc.Store(id="keystore"),
+    elif active_tab == "textsearch":
+        selected_keys = []
+        for element in table_data:
+            selected_keys.append(element["key"])
+    
+    return str(selected_keys)
 
-], style={"display": "flex",
-          "flexFlow": "row wrap",
-          "alignItems": "center",  # rechter Plot vertikal zentriert
-          })
 
-
-# Update Presence chart
+# Update Presence chart from keypicker
 # ---------------------
 @callback(Output("fig-key-presence", "figure"),
-          Input("fig-keypicker", "clickData"))
-def update_presence_chart(input_json):
+          Input("tabs", "active_tab"),
+          Input("fig-keypicker", "clickData"),
+          )
+def update_presence_chart(active_tab, keypicker_parent):
     """
     Presence chart
     """
+    if active_tab == "keypicker":
+        key = sunburst_location(keypicker_parent)
 
-    key = sunburst_location(input_json)
+        if key == "root" or key is None:  # just special syntax for when parent is None
+            child_keys = data_bund.loc[data_bund.parent.isna(
+            )].key.unique()
+        else:
+            child_keys = data_bund.loc[data_bund.parent == key].key.unique(
+            )
+        selected_keys = child_keys
+        
+    else:
+        return None
+
     colormap = {k: grp.color.iloc[0]
                 for k, grp in data_bund.groupby("key")}
-
-    if key == "root" or key is None:  # just special syntax for when parent is None
-        child_keys = data_bund.loc[data_bund.parent.isna(
-        )].key.unique()
-    else:
-        child_keys = data_bund.loc[data_bund.parent == key].key.unique(
-        )
-
-    fig = get_existence_chart(data_bund, child_keys, colormap)
+    
+    fig = get_existence_chart(data_bund, selected_keys, colormap)
 
     return (fig)
+
+
+
+
+# Update Presence chart from textsearch
+# ---------------------
+@callback(Output("fig-key-presence", "figure", allow_duplicate=True),
+          Input("tabs", "active_tab"),
+          Input("table-textsearch", "derived_viewport_data"),
+          prevent_initial_call=True
+          )
+def update_presence_chart(active_tab, table_keys):
+    """
+    Presence chart
+    """
+    if active_tab == "textsearch":
+        selected_keys = table_keys
+    
+    else:
+        return None
+
+    colormap = {k: grp.color.iloc[0]
+                for k, grp in data_bund.groupby("key")}
+    
+    fig = get_existence_chart(data_bund, selected_keys, colormap)
+
+    return (fig)
+
 
 
 # Update key store
@@ -135,11 +211,11 @@ def update_keystore(click_data, reset_trigger):
 
     global ts_key_selection
     global reset_n_clicks_old
-    
+
     if reset_trigger > reset_n_clicks_old:
         ts_key_selection = []
         reset_n_clicks_old = reset_trigger
-    
+
     else:
         selected_key = click_data["points"][0]["y"]
         if len(ts_key_selection) <= MAXKEYS:
@@ -171,10 +247,11 @@ def update_ts_from_keystore(keylist):
 
     if keylist == []:
         selected_keys_states = {"state": "Bund", "key": "000000"}
-        df_ts = data_bund.loc[(data_bund.state.eq("Bund")) & (data_bund.key.eq("000000"))].reset_index()
+        df_ts = data_bund.loc[(data_bund.state.eq("Bund")) & (
+            data_bund.key.eq("000000"))].reset_index()
         df_ts["count"] = 0
         df_ts["clearance"] = 0
-    
+
     else:
         # for now, focus only on Bund:
         selected_keys_states = [{"state": "Bund", "key": i} for i in keylist]
