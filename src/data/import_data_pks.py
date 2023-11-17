@@ -186,6 +186,9 @@ def clean_labels(data: pd.DataFrame) -> pd.DataFrame:
     # leading/trailing spaces
     data.label = data.label.str.strip()
 
+    # create an abbreviated label column for annotations
+    # (full labels can still go into the tooltips):
+    data["shortlabel"] = data.label
     removables = [
         r"§.*$",
         r".und zwar.*$",
@@ -195,12 +198,19 @@ def clean_labels(data: pd.DataFrame) -> pd.DataFrame:
         r".davon:.?$",
         r".nach.?$",
     ]
+    
+    replacements = {
+        r"insgesamt": "insg."
+    }
+    
     for removable in removables:
-        data.label = data.label.str.replace(removable, "", regex=True)
-    
-    
-    
-    # linebreak for especially long labels:
+        data.shortlabel = data.shortlabel.str.replace(removable, "", regex=True)
+
+    for pat, repl in replacements.items():
+        data.shortlabel = data.shortlabel.str.replace(pat, repl, regex=True)
+
+
+    # for the full-length labels, add linebreaks for especially long exemplars:
     data.label = data.apply(lambda x: "<br>".join(wrap(x.label, 100)), axis=1)
     
     return data
@@ -215,7 +225,7 @@ def mark_labelchange(data: pd.DataFrame) -> pd.DataFrame:
 
     data_temp = pd.DataFrame()
 
-    for i, grp in data.groupby(["state", "key", "label"]):
+    for i, grp in data.groupby(["state", "key", "shortlabel"]):
         this = grp.copy().reset_index()
         this.loc[this.index[0], "label_change"] = True
         data_temp = pd.concat([data_temp, this])
@@ -233,9 +243,10 @@ if __name__ == "__main__":
     data = pd.read_parquet("data/interim/pks.parquet")
 
     # clean labels from §§ and so on, then mark label changes:
-    data_clean = mark_labelchange(clean_labels(data))
+    data_clean = clean_labels(data)
+    data_marked = mark_labelchange(data_clean)
     
-    data_hr = hierarchize_data(data_clean)
+    data_hr = hierarchize_data(data_marked)
     global_colormap = make_df_colormap(data_hr)
     data_hr["color"] = data_hr.key.apply(
         lambda key: global_colormap[key])

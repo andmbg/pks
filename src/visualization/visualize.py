@@ -132,9 +132,10 @@ def get_keypicker(df, colormap):
         color_discrete_map=colormap,
         hover_data=['label', 'key', 'nchildren'],
         maxdepth=2,
-        height=700,
-        # width=700
-    ).update_layout(margin=dict(t=15, r=15, b=15, l=15)
+    ).update_layout(margin=dict(t=15, r=15, b=15, l=15),
+                    plot_bgcolor="#ffffff",
+                    paper_bgcolor="rgba(255, 255, 255, .3)",
+                    height=700
     ).update_traces(hovertemplate=hovertemplate,
                     leaf_opacity=1,
     ).update_coloraxes(showscale=False)
@@ -142,7 +143,7 @@ def get_keypicker(df, colormap):
     return fig
 
 
-def get_presence_chart(df, keys, colormap, xaxis="year", yaxis="key", labels="label", newname="label_change"):
+def get_presence_chart(df, keys, colormap, xaxis="year", yaxis="key", label_col="shortlabel", newname="label_change"):
     """
     Returns an existence chart indicating a set of keys and their existence through the years.
 
@@ -156,11 +157,11 @@ def get_presence_chart(df, keys, colormap, xaxis="year", yaxis="key", labels="la
     """
     df = df.loc[df.key.isin(keys)].copy()
 
-    df["firstlabel"] = df[labels]
+    df["firstlabel"] = df[label_col]
 
     # delete label were equal to previous:
     df = df.assign(label=df.apply(
-        lambda row: row[labels] if row[newname] else "Eintrag vorhanden", axis=1))
+        lambda row: row[label_col] if row[newname] else "Eintrag vorhanden", axis=1))
 
     df2 = pd.DataFrame()
 
@@ -194,7 +195,7 @@ def get_presence_chart(df, keys, colormap, xaxis="year", yaxis="key", labels="la
                 marker=dict(color=colormap[i], size=12),
                 line_width=4,
                 textposition="top right",
-                customdata=np.stack((grp[labels], grp["count"]), axis=-1),
+                customdata=np.stack((grp[label_col], grp["count"]), axis=-1),
                 hovertemplate="<b>%{y}</b> (%{x}):<br><br>%{customdata[0]}<br>%{customdata[1]} Fälle<extra></extra>"
             )
         )
@@ -217,12 +218,13 @@ def get_presence_chart(df, keys, colormap, xaxis="year", yaxis="key", labels="la
 
     fig.update_traces(showlegend=False)
     fig.update_xaxes(type="category")
-    fig.update_yaxes(autorange="reversed")
+    # fig.update_yaxes(autorange="reversed")
 
     # adapt height to number of keys displayed (space them evenly):
-    fig.update_layout(margin=dict(t=10, b=5, r=10),
-                      height=55*len(keys)+35,
-                      yaxis_range=[-0.5, len(keys)],
+    r = len(keys)  # "rows"
+    fig.update_layout(margin=dict(t=41 + 45 + 45, b=44 - 20),
+                      height=155 + 45 * r + 10,  # 45 per table row, 155 framing, 10 nudging
+                      yaxis_range=[r-.5, -.5],
                       plot_bgcolor="rgba(0,0,0,0)",
                       font_size=15)
 

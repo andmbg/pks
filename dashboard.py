@@ -5,6 +5,7 @@ from dash import Dash, dcc, html, Input, Output, State, callback, dash_table
 import dash_bootstrap_components as dbc
 
 from src.data.import_data_pks import hierarchize_data
+from src.data.config import MAXKEYS
 from src.visualization.visualize import (
     empty_timeseries,
     sunburst_location,
@@ -13,9 +14,6 @@ from src.visualization.visualize import (
     get_timeseries,
     color_map_from_color_column
 )
-
-# how many keys we want displayed at most at the same time:
-MAXKEYS = 5
 
 data_raw = pd.read_parquet("data/processed/pks.parquet")
 all_years = data_raw.year.unique()
@@ -32,17 +30,13 @@ catalog["label_key"] = catalog.apply(lambda row: row.label + " (" + row.key + ")
 ts_key_selection = []
 reset_n_clicks_old = 0
 
-
-
 # initial sunburst plot:
 keypicker = get_keypicker(
     catalog,
     colormap=color_map_from_color_column(data_bund),
 )
 
-
-app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
-
+# define dash elements outside the layout for legibility:
 
 # Sunburst:
 fig_keypicker = dcc.Graph(
@@ -50,7 +44,7 @@ fig_keypicker = dcc.Graph(
     figure=keypicker
 )
 
-# DataTable
+# DataTable for text search:
 table_search = dash_table.DataTable(
     id="table-textsearch",
     columns=[
@@ -58,58 +52,71 @@ table_search = dash_table.DataTable(
     ],
     data=catalog.to_dict("records"),
     filter_action="native",
-    page_size=10,
-    style_data={
-        # "midWidth": "150px", "maxWidth": "150px",
-        # "width": {"key": "10px", "label": "200px"},
+    page_size=15,
+    style_cell={
         "overflow": "hidden",
         "textOverflow": "ellipsis",
-    }
+        "maxWidth": 0,
+        "fontSize":16,
+        "font-family": "sans-serif"},
+    css=[
+        {"selector": ".dash-spreadsheet tr", "rule": "height: 45px;"},
+    ]
 )
 
-# Presence
+# Presence chart:
 fig_presence = dcc.Graph(
     id='fig-key-presence'
 )
 
-# Reset
+# Reset button:
 button_reset = html.Button(
     "Leeren",
     id="reset",
     n_clicks=0
 )
 
-# Timeseries
+# Timeseries:
 fig_timeseries = dcc.Graph(
     id="fig-timeseries",
     style={"height": "600px"}
 )
 
 
-app.layout = dbc.Container(
-    [
-        # Store
+app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
+
+# define app layout:
+app.layout = html.Div([
+    # top row: browsing area
+    dbc.Row([
         dcc.Store(id="keystore"),
-        
-        dbc.Tabs(
-            [
+        dbc.Col([], width={"size": 1}),
+        dbc.Col([
+            dbc.Tabs([
                 dbc.Tab([fig_keypicker], label="Blättern", tab_id="keypicker"),
-                dbc.Tab([table_search], label="Suchen", tab_id="textsearch"),
-            ],
-            id="tabs",
-            active_tab="keypicker",
-        ),
-        
-        html.Div(id="tabdata",
-                 style={"height": "50px"}),
-        
-        html.Div([fig_presence]),
-        
-        html.Div([button_reset]),
-        
-        html.Div([fig_timeseries])
-    ]
-)
+                dbc.Tab([table_search], label="Suchen", tab_id="textsearch")],
+                id="tabs",
+                active_tab="keypicker",
+            )
+        ], width={"size": 5}),
+        dbc.Col([
+            html.Div([fig_presence])            
+        ], width={"size": 5}),
+        dbc.Col([], width={"size": 1}),
+    ]),
+    
+    # row 2: reset button
+    dbc.Row([ dbc.Col([ html.Div([button_reset]) ], width={"size": 1, "offset": "6"}) ]),
+    
+    # row 3: timeseries
+    dbc.Row([
+        dbc.Col([
+            html.Div([fig_timeseries]),
+        ], width={"size": 6, "offset": 3})
+    ]),
+])
+
+# html.Div(id="tabdata", style={"height": "50px"})
 
 
 # Update Presence chart
