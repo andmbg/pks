@@ -115,13 +115,42 @@ app.layout = dbc.Container(
     ]
 )
 
-# Display selection from keypicker:
-@callback(Output("tabdata", "children"),
+# DEBUG: Display selection depending on active selector:
+# @callback(Output("tabdata", "children"),
+#           Input("fig-keypicker", "clickData"),
+#           Input("table-textsearch", "derived_viewport_data"),
+#           Input("tabs", "active_tab"))
+# def display_keypicker_data(keypicker_parent, table_data, active_tab):
+    
+#     if active_tab == "keypicker":
+#         key = sunburst_location(keypicker_parent)
+        
+#         if key == "root" or key is None:  # just special syntax for when parent is None
+#             child_keys = data_bund.loc[data_bund.parent.isna(
+#             )].key.unique()
+#         else:
+#             child_keys = data_bund.loc[data_bund.parent == key].key.unique(
+#             )
+#         selected_keys = child_keys
+    
+#     elif active_tab == "textsearch":
+#         selected_keys = []
+#         for element in table_data:
+#             selected_keys.append(element["key"])
+    
+#     return str(selected_keys)
+
+
+# Update Presence chart
+# ---------------------
+@callback(Output("fig-key-presence", "figure"),
           Input("fig-keypicker", "clickData"),
           Input("table-textsearch", "derived_viewport_data"),
           Input("tabs", "active_tab"))
-def display_keypicker_data(keypicker_parent, table_data, active_tab):
-    
+def update_presence_chart(keypicker_parent, table_data, active_tab):
+    """
+    Presence chart
+    """
     if active_tab == "keypicker":
         key = sunburst_location(keypicker_parent)
         
@@ -137,33 +166,6 @@ def display_keypicker_data(keypicker_parent, table_data, active_tab):
         selected_keys = []
         for element in table_data:
             selected_keys.append(element["key"])
-    
-    return str(selected_keys)
-
-
-# Update Presence chart from keypicker
-# ---------------------
-@callback(Output("fig-key-presence", "figure"),
-          Input("tabs", "active_tab"),
-          Input("fig-keypicker", "clickData"),
-          )
-def update_presence_chart(active_tab, keypicker_parent):
-    """
-    Presence chart
-    """
-    if active_tab == "keypicker":
-        key = sunburst_location(keypicker_parent)
-
-        if key == "root" or key is None:  # just special syntax for when parent is None
-            child_keys = data_bund.loc[data_bund.parent.isna(
-            )].key.unique()
-        else:
-            child_keys = data_bund.loc[data_bund.parent == key].key.unique(
-            )
-        selected_keys = child_keys
-        
-    else:
-        return None
 
     colormap = {k: grp.color.iloc[0]
                 for k, grp in data_bund.groupby("key")}
@@ -171,34 +173,6 @@ def update_presence_chart(active_tab, keypicker_parent):
     fig = get_existence_chart(data_bund, selected_keys, colormap)
 
     return (fig)
-
-
-
-
-# Update Presence chart from textsearch
-# ---------------------
-@callback(Output("fig-key-presence", "figure", allow_duplicate=True),
-          Input("tabs", "active_tab"),
-          Input("table-textsearch", "derived_viewport_data"),
-          prevent_initial_call=True
-          )
-def update_presence_chart(active_tab, table_keys):
-    """
-    Presence chart
-    """
-    if active_tab == "textsearch":
-        selected_keys = table_keys
-    
-    else:
-        return None
-
-    colormap = {k: grp.color.iloc[0]
-                for k, grp in data_bund.groupby("key")}
-    
-    fig = get_existence_chart(data_bund, selected_keys, colormap)
-
-    return (fig)
-
 
 
 # Update key store
