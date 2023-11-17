@@ -251,4 +251,6 @@ if __name__ == "__main__":
         "980100",  # => "Cybercrime insg."
         ])]
 
+    data_hr.drop("index", axis=1, inplace=True)
+
     data_hr.to_parquet("data/processed/pks.parquet")

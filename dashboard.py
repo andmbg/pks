@@ -6,6 +6,7 @@ import dash_bootstrap_components as dbc
 
 from src.data.import_data_pks import hierarchize_data
 from src.visualization.visualize import (
+    empty_timeseries,
     sunburst_location,
     get_keypicker,
     get_existence_chart,
@@ -23,8 +24,10 @@ data_bund = data_raw.loc[data_raw.state == "Bund"]
 # infer key hierarchy from key numbers:
 data_bund = hierarchize_data(data_bund)
 
+# catalog is used for the key picker and table:
 catalog = data_bund[["key", "label", "parent"]].drop_duplicates(subset="key")
-catalog.label = catalog.label.str.replace("<br>", "\n")
+catalog.label = catalog.label.str.replace("<br>", " ")
+catalog["label_key"] = catalog.apply(lambda row: row.label + " (" + row.key + ")", axis=1)
 
 ts_key_selection = []
 reset_n_clicks_old = 0
@@ -57,8 +60,7 @@ fig_keypicker = dcc.Graph(
 table_search = dash_table.DataTable(
     id="table-textsearch",
     columns=[
-        {"name": "Schlüssel", "id": "key", "type": "text"},
-        {"name": "Suchen:", "id": "label", "type": "text"},
+        {"name": "Suchen:", "id": "label_key", "type": "text"},
     ],
     data=catalog.to_dict("records"),
     filter_action="native",
@@ -195,11 +197,14 @@ def update_keystore_from_timeseries(input_json):
 def update_ts_from_keystore(keylist):
 
     if keylist == []:
-        selected_keys_states = {"state": "Bund", "key": "000000"}
-        df_ts = data_bund.loc[(data_bund.state.eq("Bund")) & (
-            data_bund.key.eq("000000"))].reset_index()
-        df_ts["count"] = 0
-        df_ts["clearance"] = 0
+        # selected_keys_states = {"state": "Bund", "key": "000000"}
+        # df_ts = data_bund.loc[(data_bund.state.eq("Bund")) & (
+        #     data_bund.key.eq("000000"))].reset_index()
+        # df_ts["count"] = 0
+        # df_ts["clearance"] = 0
+        years = data_bund.year.unique()
+
+        return empty_timeseries(years)
 
     else:
         # for now, focus only on Bund:

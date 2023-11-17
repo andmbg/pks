@@ -212,6 +212,7 @@ def get_existence_chart(df, keys, colormap, xaxis="year", yaxis="key", labels="l
 
     fig.update_traces(showlegend=False)
     fig.update_xaxes(type="category")
+    fig.update_yaxes(autorange="reversed")
 
     # adapt height to number of keys displayed (space them evenly):
     fig.update_layout(margin=dict(t=10, b=5, r=10),
@@ -340,3 +341,48 @@ def get_timeseries(df):
     
     return fig
 
+
+def empty_timeseries(years):
+    """
+    What gets displayed if user presses the reset btn.
+    """
+    years = years.astype(str)
+    
+    fig = make_subplots(cols=len(years), shared_yaxes=True,
+                        horizontal_spacing=.01,
+                        subplot_titles=years)
+    
+    for i, year in enumerate(years):
+        fig.add_trace(
+                go.Bar(x=[0],
+                    y=[0],
+                    # marker=dict(color="rgba(0,0,0,0)"),
+                    # showlegend=( j in legend_todo ),
+                    # name=committed.label.iloc[0],
+                    # customdata=np.stack((
+                    #     committed["key"],
+                    #     committed["year"],
+                    #     committed["label"],
+                    #     unsolved["value"],
+                    #     committed["clearance_rate"],
+                    #     committed["count"],
+                    #     ), axis=-1),
+                    # hovertemplate=hovertemplate,
+                    ),
+                col=i+1, row=1)
+    
+    fig.update_layout(plot_bgcolor="rgba(0,0,0,0)",
+                      paper_bgcolor="rgba(0,0,0,0)",
+                      margin=dict(t=25, r=20),
+                      height=900,
+                      font_size=18,
+                      showlegend=False,
+                      )
+    
+    fig.update_yaxes(gridcolor="rgba(.5,.5,.5,.5)",
+                     range=[0,1],
+                     showticklabels=False)
+    
+    fig.update_xaxes(showticklabels=False)
+    
+    return(fig)
