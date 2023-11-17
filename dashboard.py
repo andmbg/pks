@@ -115,31 +115,6 @@ app.layout = dbc.Container(
     ]
 )
 
-# DEBUG: Display selection depending on active selector:
-# @callback(Output("tabdata", "children"),
-#           Input("fig-keypicker", "clickData"),
-#           Input("table-textsearch", "derived_viewport_data"),
-#           Input("tabs", "active_tab"))
-# def display_keypicker_data(keypicker_parent, table_data, active_tab):
-    
-#     if active_tab == "keypicker":
-#         key = sunburst_location(keypicker_parent)
-        
-#         if key == "root" or key is None:  # just special syntax for when parent is None
-#             child_keys = data_bund.loc[data_bund.parent.isna(
-#             )].key.unique()
-#         else:
-#             child_keys = data_bund.loc[data_bund.parent == key].key.unique(
-#             )
-#         selected_keys = child_keys
-    
-#     elif active_tab == "textsearch":
-#         selected_keys = []
-#         for element in table_data:
-#             selected_keys.append(element["key"])
-    
-#     return str(selected_keys)
-
 
 # Update Presence chart
 # ---------------------
