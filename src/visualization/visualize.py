@@ -93,8 +93,8 @@ def germanize_number(number):
     formatted_number = formatted_str[:-1][::-1]
 
     return formatted_number
-   
-    
+
+
 def make_df_colormap(df: pd.DataFrame, keycolumn: str = "key") -> dict:
     """
     Derive from a crime stats dataset a color map {"key": "CSS color"} that
@@ -387,8 +387,6 @@ def get_ts_clearance(df):
     fig.update_yaxes(gridcolor="rgba(.5,.5,.5,.5)",
                      range=[0, maxheight*1.2])
 
-    # fig.update_traces(showlegend=False)
-
     return fig
 
 
@@ -427,41 +425,115 @@ def empty_ts_clearance(years):
 
 def get_ts_states(df):
 
-    colormap = {
-        "Bund": "rgba(0, 0, 0, 0.5)",
-        "Baden-Württemberg": "rgba(255, 127, 14, 0.3)",
-        "Bayern": "rgba(44, 160, 44, 0.3)",
-        "Berlin": "rgba(214, 39, 40, 0.3)",
-        "Brandenburg": "rgba(148, 103, 189, 0.3)",
-        "Bremen": "rgba(140, 86, 75, 0.3)",
-        "Hamburg": "rgba(227, 119, 194, 0.3)",
-        "Hessen": "rgba(127, 127, 127, 0.3)",
-        "Niedersachsen": "rgba(188, 189, 34, 0.3)",
-        "Mecklenburg-Vorpommern": "rgba(23, 190, 207, 0.3)",
-        "Nordrhein-Westfalen": "rgba(174, 199, 232, 0.3)",
-        "Rheinland-Pfalz": "rgba(255, 187, 120, 0.3)",
-        "Saarland": "rgba(152, 223, 138, 0.3)",
-        "Sachsen": "rgba(255, 152, 150, 0.3)",
-        "Sachsen-Anhalt": "rgba(197, 176, 213, 0.3)",
-        "Schleswig-Holstein": "rgba(196, 156, 148, 0.3)",
-        "Thüringen": "rgba(219, 219, 141, 0.3)"
+    key_colormap = color_map_from_color_column(df)
+
+    state_colormap = {
+        "Bund": "rgba(0,0,0,0.9)",
+        "Baden-Württemberg": "rgba(51, 160, 44, 0.8)",
+        "Bayern": "rgba(227, 26, 28, 0.8)",
+        "Berlin": "rgba(31, 120, 180, 0.8)",
+        "Brandenburg": "rgba(106, 61, 154, 0.8)",
+        "Bremen": "rgba(177, 89, 40, 0.8)",
+        "Hamburg": "rgba(166, 206, 227, 0.8)",
+        "Hessen": "rgba(253, 191, 111, 0.8)",
+        "Niedersachsen": "rgba(251, 154, 153, 0.8)",
+        "Mecklenburg-Vorpommern": "rgba(202, 178, 214, 0.8)",
+        "Nordrhein-Westfalen": "rgba(255, 255, 153, 0.8)",
+        "Rheinland-Pfalz": "rgba(255, 0, 50, 0.8)",
+        "Saarland": "rgba(31, 31, 31, 0.8)",
+        "Sachsen": "rgba(253, 191, 111, 0.8)",
+        "Sachsen-Anhalt": "rgba(255, 140, 0, 0.8)",
+        "Schleswig-Holstein": "rgba(44, 160, 44, 0.8)",
+        "Thüringen": "rgba(144, 33, 33, 0.8)"
+}
+
+
+    states_abbreviations = {
+        "Bund": "DE",
+        "Baden-Württemberg": "BW",
+        "Bayern": "BY",
+        "Berlin": "BE",
+        "Brandenburg": "BB",
+        "Bremen": "HB",
+        "Hamburg": "HH",
+        "Hessen": "HE",
+        "Mecklenburg-Vorpommern": "MV",
+        "Niedersachsen": "NI",
+        "Nordrhein-Westfalen": "NW",
+        "Rheinland-Pfalz": "RP",
+        "Saarland": "SL",
+        "Sachsen": "SN",
+        "Sachsen-Anhalt": "ST",
+        "Schleswig-Holstein": "SH",
+        "Thüringen": "TH"
     }
 
-    fig = make_subplots(rows=1, cols=2)
+    nkeys = df.key.nunique()
+
+    fig = make_subplots(rows=1, cols=nkeys, horizontal_spacing=0)
+
+    bgcolor_data = []
 
     for col, key in enumerate(df.key.unique(), start=1):
+        bgcolor = key_colormap[key]
+
         for state, grp in df.loc[df.key.eq(key)].groupby("state"):
             trace = go.Scatter(
                 x=grp.year,
                 y=grp.freq,
-                name=state,
-                legendgroup=state,
+                name=states_abbreviations[state],
                 showlegend=col == 1,
+                legendgroup=state,
                 mode="lines",
-                line=dict(color=colormap[state],
-                          width=3)
+                visible=True if state=="Bund" else "legendonly",
+                line=dict(color=state_colormap[state],
+                          width=2)
             )
             fig.add_trace(trace=trace, row=1, col=col)
+
+        # create manipulations that color our subplots differently (this is a hack
+        # due to Plotly currently not offering varying bg colors per subplot)
+        xref = "x" if col == 1 else "x"+str(col)
+        
+        # color bar
+        bgcolor_data.append(
+            dict(
+                type='rect',
+                xref=xref, yref="paper",
+                x0=min(grp.year), x1=max(grp.year), y0=-.001, y1=1,
+                fillcolor=_desaturate_brighten(key_colormap[key], .7, .8),
+                layer='below',
+                line=dict(width=0)
+            ),
+        )
+        bgcolor_data.append(
+            dict(
+                type="rect",
+                xref=xref, yref="paper",
+                x0=min(grp.year), x1=max(grp.year), y0=.95, y1=1,
+                fillcolor=key_colormap[key],
+                layer="below",
+                line=dict(width=0)
+            )
+        )
+
+
+    fig.update_yaxes(showticklabels=False,
+                     showgrid=False)
+    
+    fig.update_xaxes(showgrid=False)
+
+    fig.update_layout(
+        font_size=16,
+        legend=dict(orientation="h",
+                    x=0,
+                    y=1.1),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        title="Fälle je 100.000 Einwohner:innen im Ländervergleich",
+        # shade subplots according to their keys:
+        shapes=bgcolor_data
+    )
 
     return fig
 
@@ -470,7 +542,11 @@ def empty_ts_states():
     fig = go.Figure(
         go.Scatter()
     )
-
-    # fig.update_yaxes(ticklabelposition="inside top", title=None)
+    
+    fig.update_layout(
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        title="Fälle je 100.000 Einwohner:innen im Ländervergleich"
+    )
 
     return fig

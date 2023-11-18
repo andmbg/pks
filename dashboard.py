@@ -140,7 +140,8 @@ app.layout = html.Div([
 
     # row 4: states timeseries
     dbc.Row([dbc.Col([fig_ts_states],
-                     width={"size": 6, "offset": 3})])
+                     width={"size": 6, "offset": 3}
+            )], style={"backgroundColor": "rgba(255,100,0,.1)"})
 ])
 
 
@@ -261,6 +262,13 @@ def update_states_from_keystore(keylist):
 
     if keylist == []:
         return empty_ts_states()
+
+    # filter on selected keys:
+    df_ts = data_raw.loc[data_raw.key.isin(keylist)].reset_index()
+    
+    fig = get_ts_states(df_ts)
+    
+    return fig
 
 
 if __name__ == '__main__':
