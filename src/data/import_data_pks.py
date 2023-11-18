@@ -1,6 +1,6 @@
 import sys
 from typing import Annotated
-from textwrap import wrap
+from textwrap import wrap, shorten
 
 import pandas as pd
 
@@ -208,6 +208,8 @@ def clean_labels(data: pd.DataFrame) -> pd.DataFrame:
 
     for pat, repl in replacements.items():
         data.shortlabel = data.shortlabel.str.replace(pat, repl, regex=True)
+        
+    data.shortlabel = data.apply(lambda row: shorten(row.shortlabel, width=90, placeholder="..."), axis=1)
 
 
     # for the full-length labels, add linebreaks for especially long exemplars:

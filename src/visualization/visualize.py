@@ -40,11 +40,41 @@ def _lt(x: str, y: str) -> bool:
 
             if x[i] in "0123456789" and y[i] == "*":
                 return False
-            
+
             if x[i] == "*" and y[i] in "0123456789":
                 return True
 
         return False
+
+
+def _desaturate_brighten(hex_color, sat, bri):
+    """
+    :param hex_color: str of form "#000000"
+    :param sat: target absolute saturation (0..1)
+    :param bri: brightening: 0=no change; 1=white
+    """
+    # Convert hex to RGB
+    rgb_color = tuple(int(hex_color[i:i+2], 16) for i in (1, 3, 5))
+
+    # Convert RGB to HLS
+    h, l, s = colorsys.rgb_to_hls(
+        rgb_color[0] / 255.0, rgb_color[1] / 255.0, rgb_color[2] / 255.0)
+
+    # Desaturate the color
+    s *= sat
+
+    # brighten
+    bdiff = 1 - l
+    l = l + bri*bdiff
+
+    # Convert back to RGB
+    r, g, b = colorsys.hls_to_rgb(h, l, s)
+
+    # Convert RGB to hex
+    desaturated_hex_color = "#{:02x}{:02x}{:02x}".format(
+        int(r * 255), int(g * 255), int(b * 255))
+
+    return desaturated_hex_color
 
 
 def make_df_colormap(df: pd.DataFrame, keycolumn: str = "key") -> dict:
@@ -104,15 +134,15 @@ def sunburst_location(input_json: str):
 
             else:
                 location = path_leaf
-        
+
         elif _lt(entry, label):
             location = label
 
     return location
 
 
-def get_keypicker(df, colormap):
-    
+def get_sunburst(df, colormap):
+
     # count children of each key for information in the plot:
     key_children_dict = df.groupby("parent").agg(len).key.to_dict()
     df["nchildren"] = df.key.apply(lambda k: key_children_dict.get(k, 0))
@@ -123,7 +153,7 @@ def get_keypicker(df, colormap):
                 (%{customdata[2]} Unterschlüssel)
                 <extra></extra>"""
     hovertemplate = re.sub(r"([ ]{2,})|(\n)", "", hovertemplate)
-    
+
     fig = px.sunburst(
         df,
         names='key',
@@ -134,16 +164,16 @@ def get_keypicker(df, colormap):
         maxdepth=2,
     ).update_layout(margin=dict(t=15, r=15, b=15, l=15),
                     plot_bgcolor="#ffffff",
-                    paper_bgcolor="rgba(255, 255, 255, .3)",
+                    paper_bgcolor="rgba(0,0,0,0)",
                     height=700
-    ).update_traces(hovertemplate=hovertemplate,
-                    leaf_opacity=1,
-    ).update_coloraxes(showscale=False)
+                    ).update_traces(hovertemplate=hovertemplate,
+                                    leaf_opacity=1,
+                                    ).update_coloraxes(showscale=False)
 
     return fig
 
 
-def get_presence_chart(df, keys, colormap, xaxis="year", yaxis="key", label_col="shortlabel", newname="label_change"):
+def get_presence_chart(df, keys, colormap, xaxis="year", yaxis="key", label_annot="shortlabel", label_hover="label", newname="label_change"):
     """
     Returns an existence chart indicating a set of keys and their existence through the years.
 
@@ -157,28 +187,28 @@ def get_presence_chart(df, keys, colormap, xaxis="year", yaxis="key", label_col=
     """
     df = df.loc[df.key.isin(keys)].copy()
 
-    df["firstlabel"] = df[label_col]
+    df["firstlabel"] = df[label_annot]
 
     # delete label were equal to previous:
-    df = df.assign(label=df.apply(
-        lambda row: row[label_col] if row[newname] else "Eintrag vorhanden", axis=1))
+    # df = df.assign(label=df.apply(
+    #     lambda row: row[label_annot] if row[newname] else "Eintrag vorhanden", axis=1))
 
     df2 = pd.DataFrame()
 
     for i, grp in df.groupby([yaxis, "state"]):
         this_group = grp.sort_values(xaxis)
-        
+
         firstlabel_list = this_group["firstlabel"].values
         firstlabel_list[1:] = ""
         this_group["firstlabel"] = firstlabel_list
-        
+
         df2 = pd.concat([df2, this_group])
-    
+
     df = df2.copy()
-    
+
     # categorical y-axis:
     df.key = df.key.astype("str")
-    
+
     # ensure right order of dots:
     df = df.sort_values(["key", "year"])
 
@@ -195,8 +225,8 @@ def get_presence_chart(df, keys, colormap, xaxis="year", yaxis="key", label_col=
                 marker=dict(color=colormap[i], size=12),
                 line_width=4,
                 textposition="top right",
-                customdata=np.stack((grp[label_col], grp["count"]), axis=-1),
-                hovertemplate="<b>%{y}</b> (%{x}):<br><br>%{customdata[0]}<br>%{customdata[1]} Fälle<extra></extra>"
+                customdata=np.stack((grp[label_hover], grp["count"]), axis=-1),
+                hovertemplate="<b>%{customdata[0]}</b> (%{x}):<br><br>%{customdata[1]:,i} Fälle<extra></extra>"
             )
         )
 
@@ -225,42 +255,22 @@ def get_presence_chart(df, keys, colormap, xaxis="year", yaxis="key", label_col=
     fig.update_layout(margin=dict(t=41 + 45 + 45, b=44 - 20),
                       height=155 + 45 * r + 10,  # 45 per table row, 155 framing, 10 nudging
                       yaxis_range=[r-.5, -.5],
+                      xaxis_showgrid=False,
+                      yaxis_showgrid=False,
                       plot_bgcolor="rgba(0,0,0,0)",
+                      paper_bgcolor="rgba(0,0,0,0)",
                       font_size=15)
 
     return fig
 
 
-def get_timeseries(df):
+def get_ts_clearance(df):
     """
     :param df: Dataframe containing 1..n keys (only the data to be displayed - filter beforehand!)
     """
     # colormap = {i: grp.loc[grp.index[0], "color"] for i, grp in df.groupby("key")}
     colormap = color_map_from_color_column(df)
 
-    # plot df has one "KKKKKK (ST)" key replacing the "key" and "state" cols:
-    state_abbrev_map = {
-    "Brandenburg": "BB",
-    "Berlin": "BE",
-    "Baden-Württemberg": "BW",
-    "Bayern": "BY",
-    "Schleswig-Hostein": "SH",
-    "Hamburg": "HH",
-    "Bremen": "HB",
-    "Mecklenburg-Vorpommern": "MV",
-    "Niedersachsen": "NI",
-    "Sachsen-Anhalt": "ST",
-    "Nordrhein-Westfalen": "NW", 
-    "Hessen": "HE",
-    "Saarland": "SL",
-    "Sachsen": "SN",
-    "Thüringen": "TH",
-    "Rheinland-Pfalz": "RP",
-    "Bund": "D"
-    }
-    df["stateabbrev"] = df.state.apply(lambda x: state_abbrev_map[x])
-    df["keystate"] = df.key + " (" + df.stateabbrev + ")"
-    
     years = list(range(min(df.year), max(df.year)+1))
 
     # max bar height:
@@ -275,20 +285,27 @@ def get_timeseries(df):
 
     # cross off every key from the TODO list the first time it gets plotted
     # (this may be later than the first year in consideration):
-    legend_todo = set(df.keystate.unique())
-    
+    legend_todo = set(df.key.unique())
+
     # iterate through years:
     for i, year in enumerate(years):
         year_grp = df.loc[df.year.eq(year)]
-        
-        
+
         # iterate through keys (within year):
-        for j, key_grp in year_grp.groupby("keystate"):
-            key_without_state = re.findall(pattern=r"^(......)", string=j)[0]
-            
+        for j, key_grp in year_grp.groupby("key"):
+
             committed = key_grp.loc[key_grp.variable.eq("clearance")]
             unsolved = key_grp.loc[key_grp.variable.eq("unsolved")]
-            
+
+            customdata = np.stack((
+                committed["key"],
+                committed["year"],
+                committed["shortlabel"],
+                unsolved["value"],
+                committed["clearance_rate"],
+                committed["count"],
+            ), axis=-1)
+
             hovertemplate = "<br>".join([
                 "%{customdata[2]}",
                 "(Schlüssel %{customdata[0]})",
@@ -296,56 +313,54 @@ def get_timeseries(df):
                 "Unaufgeklärt: %{customdata[3]}",
                 "Aufklärungsrate: %{customdata[4]} %<extra></extra>"
             ])
-            
+
             fig.add_trace(
                 go.Bar(x=[j],
-                    y=committed["value"],
-                    marker=dict(color=colormap[key_without_state]),
-                    showlegend=( j in legend_todo ),
-                    name=committed.label.iloc[0],
-                    customdata=np.stack((
-                        committed["key"],
-                        committed["year"],
-                        committed["label"],
-                        unsolved["value"],
-                        committed["clearance_rate"],
-                        committed["count"],
-                        ), axis=-1),
-                    hovertemplate=hovertemplate,
-                    ),
+                       y=committed["value"],
+                       marker=dict(color=colormap[j]),
+                       showlegend=(j in legend_todo),
+                       legendgroup=j,
+                       name=committed.shortlabel.iloc[0],
+                       customdata=customdata,
+                       hovertemplate=hovertemplate,
+                       ),
                 col=i+1, row=1)
-            
+
             # unsolved cases in grey:
             fig.add_trace(
                 go.Bar(x=[j],
-                    y=unsolved.value,
-                    marker=dict(color="grey"),
-                    showlegend=False,
-                    hoverinfo="skip"
-                    ),
+                       y=unsolved.value,
+                       marker=dict(color=_desaturate_brighten(
+                           colormap[j], 0.25, .5)),
+                       showlegend=False,
+                       legendgroup=j,
+                       customdata=customdata,
+                       hovertemplate=hovertemplate,
+                       ),
                 col=i+1, row=1)
 
             # cross off the key from the legend-TODO:
             legend_todo = legend_todo.difference({j})
-            
+
     fig.update_layout(bargap=0.001,
-                    barmode="stack",
-                    plot_bgcolor="rgba(0,0,0,0)",
-                    paper_bgcolor="rgba(0,0,0,0)",
-                    margin=dict(t=25, r=20),
-                    legend=dict(yanchor="top",
-                                xanchor="left",
-                                y=.99,
-                                x=.01),
-                    height=900,
-                    font_size=18
-                    )
-    
+                      barmode="stack",
+                      plot_bgcolor="rgba(0,0,0,0)",
+                      paper_bgcolor="rgba(0,0,0,0)",
+                      margin=dict(t=25, r=20),
+                      legend=dict(yanchor="top",
+                                  xanchor="left",
+                                  y=.99,
+                                  x=.01,
+                                  bgcolor="rgba(255,255,255,.5)"),
+                      height=600,
+                      font_size=18
+                      )
+
     fig.update_yaxes(gridcolor="rgba(.5,.5,.5,.5)",
                      range=[0, maxheight*1.2])
 
     # fig.update_traces(showlegend=False)
-    
+
     return fig
 
 
@@ -354,30 +369,17 @@ def empty_timeseries(years):
     What gets displayed if user presses the reset btn.
     """
     years = years.astype(str)
-    
+
     fig = make_subplots(cols=len(years), shared_yaxes=True,
                         horizontal_spacing=.01,
                         subplot_titles=years)
-    
+
     for i, year in enumerate(years):
         fig.add_trace(
-                go.Bar(x=[0],
-                    y=[0],
-                    # marker=dict(color="rgba(0,0,0,0)"),
-                    # showlegend=( j in legend_todo ),
-                    # name=committed.label.iloc[0],
-                    # customdata=np.stack((
-                    #     committed["key"],
-                    #     committed["year"],
-                    #     committed["label"],
-                    #     unsolved["value"],
-                    #     committed["clearance_rate"],
-                    #     committed["count"],
-                    #     ), axis=-1),
-                    # hovertemplate=hovertemplate,
-                    ),
-                col=i+1, row=1)
-    
+            go.Bar(x=[0],
+                   y=[0]),
+            col=i+1, row=1)
+
     fig.update_layout(plot_bgcolor="rgba(0,0,0,0)",
                       paper_bgcolor="rgba(0,0,0,0)",
                       margin=dict(t=25, r=20),
@@ -385,11 +387,65 @@ def empty_timeseries(years):
                       font_size=18,
                       showlegend=False,
                       )
-    
+
     fig.update_yaxes(gridcolor="rgba(.5,.5,.5,.5)",
-                     range=[0,1],
+                     range=[0, 1],
                      showticklabels=False)
-    
+
     fig.update_xaxes(showticklabels=False)
-    
-    return(fig)
+
+    return fig
+
+
+def get_ts_states(df):
+
+    colormap = {
+        "Bund": "rgba(31, 119, 180, 0.3)",
+        "Baden-Württemberg": "rgba(255, 127, 14, 0.3)",
+        "Bayern": "rgba(44, 160, 44, 0.3)",
+        "Berlin": "rgba(214, 39, 40, 0.3)",
+        "Brandenburg": "rgba(148, 103, 189, 0.3)",
+        "Bremen": "rgba(140, 86, 75, 0.3)",
+        "Hamburg": "rgba(227, 119, 194, 0.3)",
+        "Hessen": "rgba(127, 127, 127, 0.3)",
+        "Niedersachsen": "rgba(188, 189, 34, 0.3)",
+        "Mecklenburg-Vorpommern": "rgba(23, 190, 207, 0.3)",
+        "Nordrhein-Westfalen": "rgba(174, 199, 232, 0.3)",
+        "Rheinland-Pfalz": "rgba(255, 187, 120, 0.3)",
+        "Saarland": "rgba(152, 223, 138, 0.3)",
+        "Sachsen": "rgba(255, 152, 150, 0.3)",
+        "Sachsen-Anhalt": "rgba(197, 176, 213, 0.3)",
+        "Schleswig-Holstein": "rgba(196, 156, 148, 0.3)",
+        "Thüringen": "rgba(219, 219, 141, 0.3)"
+    }
+
+    fig = make_subplots(rows=1, cols=2)
+
+    for col, key in enumerate(df.key.unique(), start=1):
+        for state, grp in df.loc[df.key.eq(key)].groupby("state"):
+            trace = go.Scatter(
+                x=grp.year,
+                y=grp.freq,
+                name=state,
+                legendgroup=state,
+                showlegend=col == 1,
+                mode="lines",
+                line=dict(color=colormap[state],
+                          width=3)
+            )
+            fig.add_trace(trace=trace, row=1, col=col)
+
+    return fig
+
+
+def empty_ts_states():
+    fig = make_subplots(rows=1, cols=5,
+                        horizontal_spacing=0.01)
+
+    for col in range(5):
+        trace = go.Scatter()
+        fig.add_trace(trace=trace, row=1, col=col+1)
+
+    fig.update_yaxes(ticklabelposition="inside top", title=None)
+
+    return fig
