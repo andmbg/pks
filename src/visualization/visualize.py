@@ -434,7 +434,7 @@ def get_ts_states(df):
         "Berlin": "rgba(31, 120, 180, 0.8)",
         "Brandenburg": "rgba(106, 61, 154, 0.8)",
         "Bremen": "rgba(177, 89, 40, 0.8)",
-        "Hamburg": "rgba(166, 206, 227, 0.8)",
+        "Hamburg": "rgba(50, 0, 100, 0.8)",
         "Hessen": "rgba(253, 191, 111, 0.8)",
         "Niedersachsen": "rgba(251, 154, 153, 0.8)",
         "Mecklenburg-Vorpommern": "rgba(202, 178, 214, 0.8)",
@@ -469,13 +469,12 @@ def get_ts_states(df):
     }
 
     nkeys = df.key.nunique()
-
+    bgcolor_data = []
+    annotations = []
+    
     fig = make_subplots(rows=1, cols=nkeys, horizontal_spacing=0)
 
-    bgcolor_data = []
-
     for col, key in enumerate(df.key.unique(), start=1):
-        bgcolor = key_colormap[key]
 
         for state, grp in df.loc[df.key.eq(key)].groupby("state"):
             trace = go.Scatter(
@@ -487,7 +486,7 @@ def get_ts_states(df):
                 mode="lines",
                 visible=True if state=="Bund" else "legendonly",
                 line=dict(color=state_colormap[state],
-                          width=2)
+                          width=4 if state=="Bund" else 2)
             )
             fig.add_trace(trace=trace, row=1, col=col)
 
@@ -510,16 +509,23 @@ def get_ts_states(df):
             dict(
                 type="rect",
                 xref=xref, yref="paper",
-                x0=min(grp.year), x1=max(grp.year), y0=.95, y1=1,
+                x0=min(grp.year), x1=max(grp.year), y0=.0, y1=.01,
                 fillcolor=key_colormap[key],
                 layer="below",
                 line=dict(width=0)
             )
         )
-
+        
+        # for each facet, prepare the Facet's Annotation Points (fap):
+        fap_max = df.loc[df.key.eq(key)].freq.min()
+        fap_min = df.loc[df.key.eq(key)].freq.max()
+        fap = np.linspace(fap_min, fap_max, num=10)[[0, 3, 6, 9]]
+        
+        annotations.append(fap)
 
     fig.update_yaxes(showticklabels=False,
-                     showgrid=False)
+                     showgrid=False,
+                     zeroline=False)
     
     fig.update_xaxes(showgrid=False)
 
@@ -531,9 +537,29 @@ def get_ts_states(df):
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
         title="Fälle je 100.000 Einwohner:innen im Ländervergleich",
+        hovermode="x unified",
         # shade subplots according to their keys:
         shapes=bgcolor_data
     )
+    
+    # replacement for y-axis - use annotations prepared above
+    # each facet:
+    for col, annots in enumerate(annotations):
+        xref = "x" if col == 0 else "x"+str(col+1)
+
+        # three annotations
+        for annot in annots:
+            fig.add_annotation(
+                xref=xref,
+                yref="y",
+                x=2013,
+                y=annot,
+                text="<b>" + str(int(annot)) + "</b>",
+                font=dict(color="rgba(0,0,0,.3)"),
+                showarrow=False,
+                xanchor="left",
+                col=col+1, row=1
+            )
 
     return fig
 

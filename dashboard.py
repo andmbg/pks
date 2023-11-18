@@ -102,7 +102,11 @@ app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 
 # define app layout:
 app.layout = html.Div([
-    # top row: browsing area
+
+    # row: Header
+    dbc.Row(),
+
+    # row 1: browsing area
     dbc.Row([
         dcc.Store(id="keystore"),
         dbc.Col([], width={"size": 1}),
@@ -139,9 +143,17 @@ app.layout = html.Div([
     ),
 
     # row 4: states timeseries
-    dbc.Row([dbc.Col([fig_ts_states],
-                     width={"size": 6, "offset": 3}
-            )], style={"backgroundColor": "rgba(255,100,0,.1)"})
+    dbc.Row([
+        dbc.Col([fig_ts_states],
+                width={"size": 6, "offset": 3}
+        )], style={"backgroundColor": "rgba(255,100,0,.1)"}),
+
+    # row: Footer
+    dbc.Row([
+        html.Div([
+            html.P("Quelle: PKS Bundeskriminalamt, Berichtsjahre 2013 bis 2022. Es gilt die Datenlizenz Deutschland – Namensnennung – Version 2.0")
+        ])
+    ])
 ])
 
 
@@ -265,9 +277,9 @@ def update_states_from_keystore(keylist):
 
     # filter on selected keys:
     df_ts = data_raw.loc[data_raw.key.isin(keylist)].reset_index()
-    
+
     fig = get_ts_states(df_ts)
-    
+
     return fig
 
 

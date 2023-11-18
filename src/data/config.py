@@ -25,4 +25,4 @@ colname_map = {
 }
 
 # Darstellung: Wie viele Schlüssel werden max. in der Zeitreihe angezeigt?
-MAXKEYS = 5
+MAXKEYS = 4
