@@ -1,5 +1,5 @@
-import colorsys
 import re
+import colorsys
 
 import pandas as pd
 import numpy as np
@@ -77,6 +77,24 @@ def _desaturate_brighten(hex_color, sat, bri):
     return desaturated_hex_color
 
 
+def germanize_number(number):
+    # Convert the number to a string
+    number_str = str(number)
+
+    # Reverse the string to make it easier to insert separators
+    reversed_str = number_str[::-1]
+
+    # Insert German thousand separators every three digits
+    formatted_str = ""
+    for i in range(0, len(reversed_str), 3):
+        formatted_str += reversed_str[i:i+3] + "."
+
+    # Remove the trailing dot and reverse the string back
+    formatted_number = formatted_str[:-1][::-1]
+
+    return formatted_number
+   
+    
 def make_df_colormap(df: pd.DataFrame, keycolumn: str = "key") -> dict:
     """
     Derive from a crime stats dataset a color map {"key": "CSS color"} that
@@ -225,8 +243,10 @@ def get_presence_chart(df, keys, colormap, xaxis="year", yaxis="key", label_anno
                 marker=dict(color=colormap[i], size=12),
                 line_width=4,
                 textposition="top right",
-                customdata=np.stack((grp[label_hover], grp["count"]), axis=-1),
-                hovertemplate="<b>%{customdata[0]}</b> (%{x}):<br><br>%{customdata[1]:,i} Fälle<extra></extra>"
+                customdata=np.stack((
+                    grp[label_hover],
+                    grp["count"].apply(germanize_number)), axis=-1),
+                hovertemplate="<b>%{customdata[0]}</b> (%{x}):<br><br>%{customdata[1]} Fälle<extra></extra>"
             )
         )
 
@@ -300,17 +320,25 @@ def get_ts_clearance(df):
             customdata = np.stack((
                 committed["key"],
                 committed["year"],
-                committed["shortlabel"],
-                unsolved["value"],
+                committed["label"],
+                unsolved["value"].apply(germanize_number),
                 committed["clearance_rate"],
-                committed["count"],
+                committed["count"].apply(germanize_number),
             ), axis=-1)
-
-            hovertemplate = "<br>".join([
-                "%{customdata[2]}",
-                "(Schlüssel %{customdata[0]})",
-                "Fälle im Jahr %{customdata[1]}: %{customdata[5]}",
+            
+            hovertemplate_committed = "<br>".join([
+                "Schlüssel %{customdata[0]}",
+                "<b>%{customdata[2]}</b><br>",
+                "<b>Fälle im Jahr %{customdata[1]}: %{customdata[5]}</b>",
                 "Unaufgeklärt: %{customdata[3]}",
+                "Aufklärungsrate: %{customdata[4]} %<extra></extra>"
+            ])
+
+            hovertemplate_unsolved = "<br>".join([
+                "Schlüssel %{customdata[0]}",
+                "<b>%{customdata[2]}</b><br>",
+                "Fälle im Jahr %{customdata[1]}: %{customdata[5]}",
+                "<b>Unaufgeklärt: %{customdata[3]}</b>",
                 "Aufklärungsrate: %{customdata[4]} %<extra></extra>"
             ])
 
@@ -322,7 +350,7 @@ def get_ts_clearance(df):
                        legendgroup=j,
                        name=committed.shortlabel.iloc[0],
                        customdata=customdata,
-                       hovertemplate=hovertemplate,
+                       hovertemplate=hovertemplate_committed,
                        ),
                 col=i+1, row=1)
 
@@ -335,7 +363,7 @@ def get_ts_clearance(df):
                        showlegend=False,
                        legendgroup=j,
                        customdata=customdata,
-                       hovertemplate=hovertemplate,
+                       hovertemplate=hovertemplate_unsolved,
                        ),
                 col=i+1, row=1)
 
@@ -352,7 +380,6 @@ def get_ts_clearance(df):
                                   y=.99,
                                   x=.01,
                                   bgcolor="rgba(255,255,255,.5)"),
-                      height=600,
                       font_size=18
                       )
 
@@ -364,7 +391,7 @@ def get_ts_clearance(df):
     return fig
 
 
-def empty_timeseries(years):
+def empty_ts_clearance(years):
     """
     What gets displayed if user presses the reset btn.
     """
@@ -383,7 +410,6 @@ def empty_timeseries(years):
     fig.update_layout(plot_bgcolor="rgba(0,0,0,0)",
                       paper_bgcolor="rgba(0,0,0,0)",
                       margin=dict(t=25, r=20),
-                      height=900,
                       font_size=18,
                       showlegend=False,
                       )
@@ -439,13 +465,10 @@ def get_ts_states(df):
 
 
 def empty_ts_states():
-    fig = make_subplots(rows=1, cols=5,
-                        horizontal_spacing=0.01)
+    fig = go.Figure(
+        go.Scatter()
+    )
 
-    for col in range(5):
-        trace = go.Scatter()
-        fig.add_trace(trace=trace, row=1, col=col+1)
-
-    fig.update_yaxes(ticklabelposition="inside top", title=None)
+    # fig.update_yaxes(ticklabelposition="inside top", title=None)
 
     return fig

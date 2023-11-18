@@ -7,7 +7,7 @@ import dash_bootstrap_components as dbc
 from src.data.import_data_pks import hierarchize_data
 from src.data.config import MAXKEYS
 from src.visualization.visualize import (
-    empty_timeseries,
+    empty_ts_clearance,
     sunburst_location,
     get_sunburst,
     get_presence_chart,
@@ -38,8 +38,8 @@ sunburst = get_sunburst(
     colormap=color_map_from_color_column(data_bund),
 )
 
-# define dash elements outside the layout for legibility:
-# -------------------------------------------------------
+#          define dash elements outside the layout for legibility:
+# -----------------------------------------------------------------------------
 
 # Sunburst:
 fig_sunburst = dcc.Graph(
@@ -83,15 +83,19 @@ button_reset = html.Button(
 fig_ts_clearance = dcc.Graph(
     id="fig-ts-clearance",
     style={"height": "600px"},
-    figure=empty_timeseries(all_years)
+    figure=empty_ts_clearance(all_years)
 )
 
 # Line chart on states:
 fig_ts_states = dcc.Graph(
     id="fig-ts-states",
-    style={"height": "600px"}
+    style={"height": "600px"},
+    figure=empty_ts_states()
 )
 
+
+#                                   Layout
+# -----------------------------------------------------------------------------
 
 app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 
@@ -134,15 +138,15 @@ app.layout = html.Div([
     ),
 
     # row 4: states timeseries
-    dbc.Row([dbc.Col([html.Div([fig_ts_states])],
+    dbc.Row([dbc.Col([fig_ts_states],
                      width={"size": 6, "offset": 3})])
 ])
 
-# html.Div(id="tabdata", style={"height": "50px"})
 
+#                                  Callbacks
+# -----------------------------------------------------------------------------
 
 # Update Presence chart
-# ---------------------
 @callback(Output("fig-key-presence", "figure"),
           Input("fig-sunburst", "clickData"),
           Input("table-textsearch", "derived_viewport_data"),
@@ -220,44 +224,27 @@ def update_keystore_from_timeseries(input_json):
 def update_clearance_from_keystore(keylist):
 
     if keylist == []:
-        # selected_keys_states = {"state": "Bund", "key": "000000"}
-        # df_ts = data_bund.loc[(data_bund.state.eq("Bund")) & (
-        #     data_bund.key.eq("000000"))].reset_index()
-        # df_ts["count"] = 0
-        # df_ts["clearance"] = 0
-        years = data_bund.year.unique()
+        return empty_ts_clearance(all_years)
 
-        return empty_timeseries(years)
+    # filter on selected keys:
+    df_ts = data_bund.loc[data_bund.key.isin(keylist)].reset_index()
 
-    else:
-        # for now, focus only on Bund:
-        selected_keys_states = [{"state": "Bund", "key": i} for i in keylist]
+    # remove years in which cases = 0 (prevent div/0):
+    df_ts = df_ts.loc[df_ts["count"].gt(0)]
 
-        # select only keys that are in the selection:
-        df_ts = pd.concat([
-            data_bund.loc[(data_bund.state.eq(i["state"])) & (data_bund.key.eq(i["key"]))] for i in selected_keys_states
-        ]).reset_index()
-
-    #
-    # df_ts = df_ts[["key", "state", "year",
-    #                "label", "count", "clearance", "color"]]
+    # prepare transformed columns for bar display:
     df_ts["unsolved"] = df_ts["count"] - df_ts.clearance
+    df_ts["clearance_rate"] = df_ts.apply(
+        lambda r: round(r["clearance"] / r["count"] * 100, 1),
+        axis=1)
 
-    # remove years in which cases = 0 (prevent div/0)
-    if keylist != []:
-        df_ts = df_ts.loc[df_ts["count"].gt(0)]
-        df_ts["clearance_rate"] = df_ts.apply(lambda r: round(
-            r["clearance"] / r["count"] * 100, 1), axis=1)
-
-    # ...unless we have a reset:
-    else:
-        df_ts["clearance_rate"] = 0
-
-    df_ts = pd.melt(df_ts,
-                    id_vars=["key", "state", "year",
-                             "shortlabel", "color", "clearance_rate", "count"],
-                    value_vars=["clearance", "unsolved"],
-                    )
+    # prepare long shape for consumption by plotting function:
+    df_ts = pd.melt(
+        df_ts,
+        id_vars=["key", "state", "year", "shortlabel", "label",
+                 "color", "clearance_rate", "count"],
+        value_vars=["clearance", "unsolved"],
+    )
 
     timeseries = get_ts_clearance(df_ts)
 
