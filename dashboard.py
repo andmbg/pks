@@ -12,6 +12,7 @@ from src.visualization.visualize import (
     get_sunburst,
     get_presence_chart,
     get_ts_clearance,
+    get_ts_states,
     color_map_from_color_column,
     empty_ts_states
 )
@@ -246,9 +247,9 @@ def update_clearance_from_keystore(keylist):
         value_vars=["clearance", "unsolved"],
     )
 
-    timeseries = get_ts_clearance(df_ts)
+    fig = get_ts_clearance(df_ts)
 
-    return timeseries
+    return fig
 
 
 # Update state timeseries from keystore

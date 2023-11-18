@@ -325,7 +325,7 @@ def get_ts_clearance(df):
                 committed["clearance_rate"],
                 committed["count"].apply(germanize_number),
             ), axis=-1)
-            
+
             hovertemplate_committed = "<br>".join([
                 "Schlüssel %{customdata[0]}",
                 "<b>%{customdata[2]}</b><br>",
@@ -374,13 +374,14 @@ def get_ts_clearance(df):
                       barmode="stack",
                       plot_bgcolor="rgba(0,0,0,0)",
                       paper_bgcolor="rgba(0,0,0,0)",
-                      margin=dict(t=25, r=20),
+                      margin=dict(t=60, r=20),
                       legend=dict(yanchor="top",
                                   xanchor="left",
                                   y=.99,
                                   x=.01,
                                   bgcolor="rgba(255,255,255,.5)"),
-                      font_size=18
+                      font_size=18,
+                      title="Delikte und ihre Aufklärungsraten im Jahresvergleich"
                       )
 
     fig.update_yaxes(gridcolor="rgba(.5,.5,.5,.5)",
@@ -409,9 +410,10 @@ def empty_ts_clearance(years):
 
     fig.update_layout(plot_bgcolor="rgba(0,0,0,0)",
                       paper_bgcolor="rgba(0,0,0,0)",
-                      margin=dict(t=25, r=20),
+                      margin=dict(t=60, r=20),
                       font_size=18,
                       showlegend=False,
+                      title="Delikte und ihre Aufklärungsraten im Jahresvergleich"
                       )
 
     fig.update_yaxes(gridcolor="rgba(.5,.5,.5,.5)",
@@ -426,7 +428,7 @@ def empty_ts_clearance(years):
 def get_ts_states(df):
 
     colormap = {
-        "Bund": "rgba(31, 119, 180, 0.3)",
+        "Bund": "rgba(0, 0, 0, 0.5)",
         "Baden-Württemberg": "rgba(255, 127, 14, 0.3)",
         "Bayern": "rgba(44, 160, 44, 0.3)",
         "Berlin": "rgba(214, 39, 40, 0.3)",
