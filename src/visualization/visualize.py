@@ -385,7 +385,7 @@ def get_ts_clearance(df):
                                   bordercolor="black",
                                   borderwidth=0.5),
                       font_size=18,
-                      title="Delikte und ihre Aufklärungsraten im Jahresvergleich"
+                      title="Jahresvergleich Fälle und Aufklärung"
                       )
 
     fig.update_yaxes(gridcolor="rgba(.5,.5,.5,.5)",
@@ -415,7 +415,7 @@ def empty_ts_clearance(years):
                       margin=dict(t=60, r=20),
                       font_size=18,
                       showlegend=False,
-                      title="Delikte und ihre Aufklärungsraten im Jahresvergleich"
+                      title="Jahresvergleich Fälle und Aufklärung"
                       )
 
     fig.update_yaxes(gridcolor="rgba(.5,.5,.5,.5)",
@@ -449,8 +449,7 @@ def get_ts_states(df):
         "Sachsen-Anhalt": "rgba(255, 140, 0, 0.8)",
         "Schleswig-Holstein": "rgba(44, 160, 44, 0.8)",
         "Thüringen": "rgba(144, 33, 33, 0.8)"
-}
-
+    }
 
     states_abbreviations = {
         "Bund": "DE",
@@ -475,7 +474,7 @@ def get_ts_states(df):
     nkeys = df.key.nunique()
     bgcolor_data = []
     annotations = []
-    
+
     fig = make_subplots(rows=1, cols=nkeys, horizontal_spacing=0.005)
 
     for col, key in enumerate(df.key.unique(), start=1):
@@ -488,16 +487,16 @@ def get_ts_states(df):
                 showlegend=col == 1,
                 legendgroup=state,
                 mode="lines",
-                visible=True if state=="Bund" else "legendonly",
+                visible=True if state == "Bund" else "legendonly",
                 line=dict(color=state_colormap[state],
-                          width=4 if state=="Bund" else 2)
+                          width=4 if state == "Bund" else 2)
             )
             fig.add_trace(trace=trace, row=1, col=col)
 
         # create manipulations that color our subplots differently (this is a hack
         # due to Plotly currently not offering varying bg colors per subplot)
         xref = "x" if col == 1 else "x"+str(col)
-        
+
         # color bar
         bgcolor_data.append(
             dict(
@@ -519,41 +518,41 @@ def get_ts_states(df):
                 line=dict(width=0)
             )
         )
-        
+
         # for each facet, prepare the Facet's Annotation Points (fap):
         fap_max = df.loc[df.key.eq(key)].freq.min()
         fap_min = df.loc[df.key.eq(key)].freq.max()
         fap = np.linspace(fap_min, fap_max, num=10)[[0, 3, 6, 9]]
-        
+
         annotations.append(fap)
 
     fig.update_yaxes(showticklabels=False,
                      showgrid=False,
                      zeroline=False)
-    
+
     fig.update_xaxes(showgrid=False)
 
     fig.update_layout(
         font_size=16,
         legend=dict(orientation="h",
                     x=0,
-                    y=1,
-                    yanchor="bottom"),
+                    y=-.15,
+                    yanchor="top"),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
         title=dict(
             text="Fälle je 100.000 Einwohner:innen im Ländervergleich",
-            y=1,
-            yanchor="top",
-            yref="container",
-            pad=dict(t=20),
-            ),
-        margin=dict(t=110),
+            # y=1,
+            # yanchor="top",
+            # yref="container",
+            # pad=dict(t=20),
+        ),
+        margin=dict(t=50),
         hovermode="x unified",
         # shade subplots according to their keys:
         shapes=bgcolor_data
     )
-    
+
     # replacement for y-axis - use annotations prepared above
     # each facet:
     for col, annots in enumerate(annotations):
@@ -580,11 +579,66 @@ def empty_ts_states():
     fig = go.Figure(
         go.Scatter()
     )
-    
+
     fig.update_layout(
         paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,.1)",
         title="Fälle je 100.000 Einwohner:innen im Ländervergleich"
     )
+
+    fig.update_xaxes(
+        showgrid=False,
+        zeroline=False,
+        showticklabels=False,
+    )
+    fig.update_yaxes(
+        showgrid=False,
+        zeroline=False,
+        showticklabels=False,
+    )
+
+    fig.add_annotation(
+        text="Schlüssel/Delikt auswählen, um hier<br>den Ländervergleich zu sehen!",
+        x=.5, y=.5,
+        xanchor="center", yanchor="middle",
+        xref="paper", yref="paper",
+        showarrow=False,
+        font=dict(size=24)
+        )
+
+    return fig
+
+
+def empty_plot(placeholder_text: str = "Hier könnte Ihre Werbung stehen!"):
+    
+    fig = go.Figure(
+        go.Scatter()
+    )
+
+    fig.update_layout(
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,.1)",
+        title="Fälle je 100.000 Einwohner:innen im Ländervergleich"
+    )
+
+    fig.update_xaxes(
+        showgrid=False,
+        zeroline=False,
+        showticklabels=False,
+    )
+    fig.update_yaxes(
+        showgrid=False,
+        zeroline=False,
+        showticklabels=False,
+    )
+
+    fig.add_annotation(
+        text=placeholder_text,
+        x=.5, y=.5,
+        xanchor="center", yanchor="middle",
+        xref="paper", yref="paper",
+        showarrow=False,
+        font=dict(size=24)
+        )
 
     return fig

@@ -7,6 +7,7 @@ import dash_bootstrap_components as dbc
 from src.data.import_data_pks import hierarchize_data
 from src.data.config import MAXKEYS
 from src.visualization.visualize import (
+    empty_plot,
     empty_ts_clearance,
     sunburst_location,
     get_sunburst,
@@ -74,7 +75,7 @@ fig_presence = dcc.Graph(
 )
 
 # Reset button:
-button_reset = html.Button(
+button_reset = dbc.Button(
     "Leeren",
     id="reset",
     n_clicks=0
@@ -84,75 +85,171 @@ button_reset = html.Button(
 fig_ts_clearance = dcc.Graph(
     id="fig-ts-clearance",
     style={"height": "600px"},
-    figure=empty_ts_clearance(all_years)
+    figure=empty_plot(
+        f"Bis zu {MAXKEYS} Schlüssel/Delikte<br>"
+        "auswählen, um sie hier zu vergleichen!"
+    )
 )
 
 # Line chart on states:
 fig_ts_states = dcc.Graph(
     id="fig-ts-states",
     style={"height": "600px"},
-    figure=empty_ts_states()
+    figure=empty_plot(
+        "Schlüssel/Delikte auswählen, um hier<br>den Ländervergleich zu sehen!"
+    )
 )
 
+# Prose between the selector area and clearance timeseries:
+with open("src/prose/post_selection_pre_clearance.md", "r") as file:
+    md_post_selection = dcc.Markdown(file.read())
+
+# Prose between the two timeseries:
+with open("src/prose/post_clearance_pre_states.md", "r") as file:
+    md_post_ts = dcc.Markdown(file.read())
 
 #                                   Layout
 # -----------------------------------------------------------------------------
-
-app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
+app = Dash(__name__, external_stylesheets=[dbc.themes.FLATLY])
 
 # define app layout:
 app.layout = html.Div([
 
-    # row: Header
-    dbc.Row(),
+    dbc.Container([
 
-    # row 1: browsing area
-    dbc.Row([
-        dcc.Store(id="keystore"),
-        dbc.Col([], width={"size": 1}),
-        dbc.Col([
-            dbc.Tabs([
-                dbc.Tab([fig_sunburst], label="Blättern", tab_id="keypicker"),
-                dbc.Tab([table_search], label="Suchen", tab_id="textsearch")
+        # Intro
+        dbc.Row(),
+
+        # browsing area
+        dbc.Row([
+            dcc.Store(id="keystore"),
+            dbc.Col([
+                dbc.Tabs([
+                    dbc.Tab(
+                        [fig_sunburst],
+                        label="Blättern",
+                        tab_id="keypicker",
+                    ),
+                    dbc.Tab(
+                        [table_search],
+                        label="Suchen",
+                        tab_id="textsearch",
+                    ),
+                ],
+                    id="tabs",
+                    active_tab="keypicker",
+                )
             ],
-                id="tabs",
-                active_tab="keypicker",
+                xs={"size": 6},
+                lg={"size": 6},
+            ),
+            dbc.Col([
+                html.Div([fig_presence])
+            ],
+                xs={"size": 6},
+                lg={"size": 6},
+            ),
+            dbc.Col([], width={"size": 1}),
+        ],
+            style={"backgroundColor": "rgba(50,50,255, .1)"}
+        ),
+
+        # prose after selection
+        dbc.Row([
+            dbc.Col(
+                dbc.Collapse(
+                    md_post_selection,
+                    id="collapsible-post_selection",
+                    is_open=True,
+                ),
+                lg={"size": 6, "offset": 3},
+                sm=10,
+            ),
+
+            dbc.Col(
+                dbc.Button(
+                    "Ausblenden",
+                    id="button-collapse-post_selection",
+                    n_clicks=0,
+                ),
+                lg=2,
+                align="center",
+            ),
+        ],
+            style={
+                "backgroundColor": "rgba(255,200,0, .1)",
+                "paddingTop": "30px"
+                }
+        ),
+
+        # reset button
+        dbc.Row(
+            dbc.Col(
+                html.Center([button_reset]),
+                lg={"size": 6, "offset": 3},
+                sm=12,
+            ),
+            style={"backgroundColor": "rgba(255,200,0, .1)"},
+        ),
+
+        # clearance timeseries
+        dbc.Row(
+            dbc.Col(
+                fig_ts_clearance,
+                width=12
+            ),
+            style={"backgroundColor": "rgba(255,200,0,.1)"},
+        ),
+        
+        # collapsible prose between timeseries
+        dbc.Row([
+            dbc.Col(
+                dbc.Collapse(
+                    md_post_ts,
+                    id="collapsible-post_ts",
+                    is_open=True,
+                ),
+                lg={"size": 6, "offset": 3},
+                sm=10,
+            ),
+
+            dbc.Col(
+                dbc.Button(
+                    "Ausblenden",
+                    id="button-collapse-post_ts",
+                    n_clicks=0,
+                ),
+                lg=2,
+                align="center"
             )
-        ], width={"size": 5}),
-        dbc.Col([
-            html.Div([fig_presence])
-        ], width={"size": 5}),
-        dbc.Col([], width={"size": 1}),
-    ], style={"backgroundColor": "rgba(50,50,255, .1)"}),
+        ],
+            style={
+                "backgroundColor": "rgba(255,100,0,.1)",
+                "paddingTop": "30px",
+                },
+        ),
 
-    # row 2: reset button
-    dbc.Row([
-        dbc.Col([
-            html.Div([button_reset])
-        ], width={"size": 1}
-        )], justify="center",
-        style={"backgroundColor": "rgba(255,200,0,.1)"}
-    ),
+        # states timeseries
+        dbc.Row(
+            dbc.Col(
+                fig_ts_states,
+                width=12,
+                style={"backgroundColor": "rgba(255,100,0,.1)"},
+            )
+        ),
 
-    # row 3: clearance timeseries
-    dbc.Row([
-        dbc.Col([
-            html.Div([fig_ts_clearance])
-        ], width={"size": 6, "offset": 3},
-        )], style={"backgroundColor": "rgba(255,200,0,.1)"}
-    ),
-
-    # row 4: states timeseries
-    dbc.Row([
-        dbc.Col([fig_ts_states],
-                width={"size": 6, "offset": 3}
-        )], style={"backgroundColor": "rgba(255,100,0,.1)"}),
-
-    # row: Footer
-    dbc.Row([
-        html.Div([
-            html.P("Quelle: PKS Bundeskriminalamt, Berichtsjahre 2013 bis 2022. Es gilt die Datenlizenz Deutschland – Namensnennung – Version 2.0")
-        ])
+        # row: Footer
+        dbc.Row(
+            dbc.Col(
+                html.Center(
+                    "Quelle: PKS Bundeskriminalamt, Berichtsjahre 2013 bis 2022. "
+                    "Es gilt die Datenlizenz Deutschland – Namensnennung – Version 2.0",
+                    style={"height": "200px"}
+                    ),
+                lg={"size": 6, "offset": 3},
+                sm=12,
+            )
+        ),
     ])
 ])
 
@@ -238,7 +335,10 @@ def update_keystore_from_timeseries(input_json):
 def update_clearance_from_keystore(keylist):
 
     if keylist == []:
-        return empty_ts_clearance(all_years)
+        return empty_plot(
+            f"Bis zu {MAXKEYS} Schlüssel/Delikte<br>"
+            "auswählen, um sie hier zu vergleichen!"
+        )
 
     # filter on selected keys:
     df_ts = data_bund.loc[data_bund.key.isin(keylist)].reset_index()
@@ -273,7 +373,9 @@ def update_clearance_from_keystore(keylist):
 def update_states_from_keystore(keylist):
 
     if keylist == []:
-        return empty_ts_states()
+        return empty_plot(
+            "Schlüssel/Delikte auswählen, um hier<br>den Ländervergleich zu sehen!"
+        )
 
     # filter on selected keys:
     df_ts = data_raw.loc[data_raw.key.isin(keylist)].reset_index()
@@ -281,6 +383,28 @@ def update_states_from_keystore(keylist):
     fig = get_ts_states(df_ts)
 
     return fig
+
+
+@app.callback(
+    Output("collapsible-post_selection", "is_open"),
+    [Input("button-collapse-post_selection", "n_clicks")],
+    [State("collapsible-post_selection", "is_open")],
+)
+def toggle_collapse_post_selection(n, is_open):
+    if n:
+        return not is_open
+    return is_open
+
+
+@app.callback(
+    Output("collapsible-post_ts", "is_open"),
+    [Input("button-collapse-post_ts", "n_clicks")],
+    [State("collapsible-post_ts", "is_open")],
+)
+def toggle_collapse_post_ts(n, is_open):
+    if n:
+        return not is_open
+    return is_open
 
 
 if __name__ == '__main__':
