@@ -182,7 +182,7 @@ def get_sunburst(df, colormap):
         maxdepth=2,
     ).update_layout(margin=dict(t=15, r=15, b=15, l=15),
                     plot_bgcolor="#ffffff",
-                    paper_bgcolor="rgba(0,0,0,0)",
+                    paper_bgcolor="rgba(255,255,255,0)",
                     height=700
                     ).update_traces(hovertemplate=hovertemplate,
                                     leaf_opacity=1,
@@ -299,7 +299,9 @@ def get_ts_clearance(df):
     # maxheight = pd.DataFrame({"a": counts1, "b": counts2}).apply(sum, axis=1).max()
     maxheight = df["count"].max() * 1.2
 
-    fig = make_subplots(cols=len(years), shared_yaxes=True,
+    fig = make_subplots(cols=len(years),
+                        shared_yaxes=True,
+                        shared_xaxes=True,
                         horizontal_spacing=.01,
                         subplot_titles=years)
 
@@ -379,7 +381,9 @@ def get_ts_clearance(df):
                                   xanchor="left",
                                   y=.99,
                                   x=.01,
-                                  bgcolor="rgba(255,255,255,.5)"),
+                                  bgcolor="rgba(255,255,255,.5)",
+                                  bordercolor="black",
+                                  borderwidth=0.5),
                       font_size=18,
                       title="Delikte und ihre Aufklärungsraten im Jahresvergleich"
                       )
@@ -397,7 +401,7 @@ def empty_ts_clearance(years):
     years = years.astype(str)
 
     fig = make_subplots(cols=len(years), shared_yaxes=True,
-                        horizontal_spacing=.01,
+                        horizontal_spacing=0,
                         subplot_titles=years)
 
     for i, year in enumerate(years):
@@ -472,7 +476,7 @@ def get_ts_states(df):
     bgcolor_data = []
     annotations = []
     
-    fig = make_subplots(rows=1, cols=nkeys, horizontal_spacing=0)
+    fig = make_subplots(rows=1, cols=nkeys, horizontal_spacing=0.005)
 
     for col, key in enumerate(df.key.unique(), start=1):
 
@@ -533,10 +537,18 @@ def get_ts_states(df):
         font_size=16,
         legend=dict(orientation="h",
                     x=0,
-                    y=1.1),
+                    y=1,
+                    yanchor="bottom"),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
-        title="Fälle je 100.000 Einwohner:innen im Ländervergleich",
+        title=dict(
+            text="Fälle je 100.000 Einwohner:innen im Ländervergleich",
+            y=1,
+            yanchor="top",
+            yref="container",
+            pad=dict(t=20),
+            ),
+        margin=dict(t=110),
         hovermode="x unified",
         # shade subplots according to their keys:
         shapes=bgcolor_data
