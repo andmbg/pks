@@ -1,11 +1,11 @@
 .PHONY: data clean run
 
-venv/bin/activate: requirements.txt
+install: requirements.txt
 	python3 -m venv venv
 	./venv/bin/pip install -r requirements.txt
 
 run: venv/bin/activate
-	./venv/bin/python3 sunburst.py
+	./venv/bin/python3 dashboard.py
 
 clean:
 	rm -rf __pycache__
