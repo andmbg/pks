@@ -5,7 +5,7 @@ install: requirements.txt
 	./venv/bin/pip install -r requirements.txt
 
 run: venv/bin/activate
-	./venv/bin/python3 dashboard.py
+	./venv/bin/python3 -m pks.dashboard
 
 clean:
 	rm -rf __pycache__
@@ -13,4 +13,4 @@ clean:
 	rm -rf .ipynb_checkpoints
 
 data:
-	python3 -m src.data.import_data_pks
+	./venv/bin/python3 -m src.data.import_data_pks

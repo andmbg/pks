@@ -12,7 +12,7 @@ Activate the virtual environment:
 source venv/bin/activate
 ```
 
-Import the data:
+Import the data (this will take a few minutes):
 
 ``` bash
 make data
