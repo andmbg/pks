@@ -4,8 +4,8 @@ from textwrap import wrap, shorten
 
 import pandas as pd
 
-from src.data.config import colname_map, select_columns
-from src.visualization.visualize import make_df_colormap
+from ..data.config import colname_map, select_columns
+from ..visualization.visualize import make_df_colormap
 
 
 sys.path.append("..")  # necessary when used by a notebook
