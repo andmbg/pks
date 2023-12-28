@@ -142,7 +142,7 @@ def sunburst_location(input_json: str):
     path_leaf = path_match[1] if path_match is not None else "root"
 
     # use those vars for the decision logic:
-    if entry == "":
+    if entry == "Straftaten":
         location = label
 
     else:

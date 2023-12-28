@@ -28,16 +28,19 @@ logging.basicConfig(
 # allow relative path definitions:
 dashapp_rootdir = Path(__file__).resolve().parent.parent
 
+
 def init_dashboard(server):
 
-    data_raw = pd.read_parquet(dashapp_rootdir / "data" / "processed" / "pks.parquet")
+    data_raw = pd.read_parquet(
+        dashapp_rootdir / "data" / "processed" / "pks.parquet")
     data_bund = data_raw.loc[data_raw.state == "Bund"]
 
     # infer key hierarchy from key numbers:
     data_bund = hierarchize_data(data_bund)
 
     # catalog is used for the key picker and table:
-    catalog = data_bund[["key", "label", "parent", "sectionwidth"]].drop_duplicates(subset="key")
+    catalog = data_bund[["key", "label", "parent",
+                         "sectionwidth"]].drop_duplicates(subset="key")
     catalog.label = catalog.label.str.replace("<br>", " ")
     catalog["label_key"] = catalog.apply(
         lambda row: row.label + " (" + row.key + ")", axis=1)
@@ -47,7 +50,7 @@ def init_dashboard(server):
         catalog,
         colormap=color_map_from_color_column(data_bund),
     )
-    
+
     #          define dash elements outside the layout for legibility:
     # -----------------------------------------------------------------------------
 
@@ -111,7 +114,7 @@ def init_dashboard(server):
     # Intro text
     with open(dashapp_rootdir / "pks" / "src" / "prose" / "intro.md", "r") as file:
         md_intro = dcc.Markdown(file.read())
-    
+
     # Prose between the selector area and clearance timeseries:
     with open(dashapp_rootdir / "pks" / "src" / "prose" / "post_selection_pre_clearance.md", "r") as file:
         md_post_selection = dcc.Markdown(file.read())
@@ -119,39 +122,38 @@ def init_dashboard(server):
     # Prose between the two timeseries:
     with open(dashapp_rootdir / "pks" / "src" / "prose" / "post_clearance_pre_states.md", "r") as file:
         md_between_ts = dcc.Markdown(file.read())
-    
+
     # Text following dashboard:
     with open(dashapp_rootdir / "pks" / "src" / "prose" / "post_states.md", "r") as file:
         md_post_ts = dcc.Markdown(file.read())
-        
 
     #                                   Layout
     # -----------------------------------------------------------------------------
     app = Dash(__name__,
-        server=server,
-        routes_pathname_prefix="/pks/",
-        external_stylesheets=[dbc.themes.FLATLY],
-    )
+               server=server,
+               routes_pathname_prefix="/pks/",
+               external_stylesheets=[dbc.themes.FLATLY],
+               )
 
     # define app layout:
     app.layout = html.Div([
 
         dbc.Container(style={"paddingTop": "50px"},
                       children=[
-            
+
             dcc.Store(id="keystore", data=[]),
 
             # Intro
             dbc.Row([
                 dbc.Col([
                     md_intro
-                    ],
+                ],
                     xs={"size": 12},
                     lg={"size": 6, "offset": 3},
                 ),
-                ], style={"backgroundColor": "rgba(50,50,255, .1)",
-                          "paddingTop": "50px",
-                          },
+            ], style={"backgroundColor": "rgba(50,50,255, .1)",
+                      "paddingTop": "50px",
+                      },
             ),
 
             # browsing area
@@ -212,7 +214,7 @@ def init_dashboard(server):
                 style={
                     "backgroundColor": "rgba(255,200,0, .1)",
                     "paddingTop": "30px"
-                    }
+            }
             ),
 
             # reset button
@@ -233,7 +235,7 @@ def init_dashboard(server):
                 ),
                 style={"backgroundColor": "rgba(255,200,0,.1)"},
             ),
-            
+
             # collapsible prose between timeseries
             dbc.Row([
                 dbc.Col(
@@ -259,7 +261,7 @@ def init_dashboard(server):
                 style={
                     "backgroundColor": "rgba(255,100,0,.1)",
                     "paddingTop": "30px",
-                    },
+            },
             ),
 
             # states timeseries
@@ -270,7 +272,7 @@ def init_dashboard(server):
                     style={"backgroundColor": "rgba(255,100,0,.1)"},
                 )
             ),
-            
+
             # post-dashboard text
             dbc.Row(
                 dbc.Col(
@@ -289,25 +291,26 @@ def init_dashboard(server):
                         "Quelle: PKS Bundeskriminalamt, Berichtsjahre 2013 bis 2022. "
                         "Es gilt die Datenlizenz Deutschland – Namensnennung – Version 2.0",
                         style={"height": "200px"}
-                        ),
+                    ),
                     lg={"size": 6, "offset": 3},
                     sm=12,
                 )
             ),
         ])
     ])
-    
+
     init_callbacks(app, data_bund, data_raw)
-    
+
     return app.server
 
 
 def init_callbacks(app, data_bund, data_raw):
+
     # Update Presence chart
     @app.callback(Output("fig-key-presence", "figure"),
-            Input("fig-sunburst", "clickData"),
-            Input("table-textsearch", "derived_viewport_data"),
-            Input("tabs", "active_tab"))
+                  Input("fig-sunburst", "clickData"),
+                  Input("table-textsearch", "derived_viewport_data"),
+                  Input("tabs", "active_tab"))
     def update_presence_chart(keypicker_parent, table_data, active_tab):
         """
         Presence chart
@@ -316,8 +319,9 @@ def init_callbacks(app, data_bund, data_raw):
             key = sunburst_location(keypicker_parent)
 
             if key == "root" or key is None:  # just special syntax for when parent is None
-                child_keys = data_bund.loc[data_bund.parent.isna(
-                )].key.unique()
+                child_keys = data_bund.loc[
+                    data_bund.parent.eq("Straftaten")
+                    ].key.unique()
             else:
                 child_keys = data_bund.loc[data_bund.parent == key].key.unique(
                 )
@@ -335,9 +339,9 @@ def init_callbacks(app, data_bund, data_raw):
 
         return (fig)
 
-
     # Update key store
     # ----------------
+
     @app.callback(
         Output("keystore", "data", allow_duplicate=True),
         State("keystore", "data"),
@@ -351,12 +355,12 @@ def init_callbacks(app, data_bund, data_raw):
             key_to_add = click_presence["points"][0]["y"]
             if len(key_selection_new) < MAXKEYS:
                 key_selection_new.append(key_to_add)
-            
-            return key_selection_new
 
+            return key_selection_new
 
     # Update key store from time series
     # ---------------------------------
+
     @app.callback(
         Output("keystore", "data", allow_duplicate=True),
         Input("fig-ts-clearance", "clickData"),
@@ -367,12 +371,12 @@ def init_callbacks(app, data_bund, data_raw):
         key_to_remove = click_clearance["points"][0]["x"][0:6]
         keyselection_new = keyselection_old
         keyselection_new.remove(key_to_remove)
-        
-        return keyselection_new
 
+        return keyselection_new
 
     # Reset key store
     # ----------------------------------
+
     @app.callback(
         Output("keystore", "data", allow_duplicate=True),
         Input("reset", "n_clicks"),
@@ -381,13 +385,13 @@ def init_callbacks(app, data_bund, data_raw):
     def reset_keystore(clickevent):
         return []
 
-
     # Update clearance timeseries from keystore
     # -----------------------------------------
+
     @app.callback(
         Output("fig-ts-clearance", "figure"),
         Input("keystore", "data"),
-            prevent_initial_call=True)
+        prevent_initial_call=True)
     def update_clearance_from_keystore(keylist):
 
         if keylist == []:
@@ -412,20 +416,20 @@ def init_callbacks(app, data_bund, data_raw):
         df_ts = pd.melt(
             df_ts,
             id_vars=["key", "state", "year", "shortlabel", "label",
-                    "color", "clearance_rate", "count"],
+                     "color", "clearance_rate", "count"],
             value_vars=["clearance", "unsolved"],
         )
 
         fig = get_ts_clearance(df_ts)
 
         return fig
-    
-    
+
     # Update state timeseries from keystore
     # -------------------------------------
+
     @app.callback(Output("fig-ts-states", "figure"),
-            Input("keystore", "data"),
-            prevent_initial_call=True)
+                  Input("keystore", "data"),
+                  prevent_initial_call=True)
     def update_states_from_keystore(keylist):
 
         if keylist == []:
@@ -440,7 +444,6 @@ def init_callbacks(app, data_bund, data_raw):
 
         return fig
 
-
     @app.callback(
         Output("collapsible-post_selection", "is_open"),
         [Input("button-collapse-post_selection", "n_clicks")],
@@ -450,7 +453,6 @@ def init_callbacks(app, data_bund, data_raw):
         if n:
             return not is_open
         return is_open
-
 
     @app.callback(
         Output("collapsible-post_ts", "is_open"),
