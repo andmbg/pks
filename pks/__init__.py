@@ -1,4 +1,5 @@
 from pathlib import Path
+import logging
 
 import pandas as pd
 from dash import Dash, dcc, html, Input, Output, State, callback, dash_table
@@ -16,26 +17,30 @@ from .src.visualization.visualize import (
     color_map_from_color_column,
 )
 
+
+logging.basicConfig(
+    filename="dashboard.log",
+    filemode="w",
+    level=logging.DEBUG,
+    format='%(asctime)s %(levelname)s %(message)s'
+)
+
 # allow relative path definitions:
 dashapp_rootdir = Path(__file__).resolve().parent.parent
 
 def init_dashboard(server):
 
     data_raw = pd.read_parquet(dashapp_rootdir / "data" / "processed" / "pks.parquet")
-    all_years = data_raw.year.unique()
     data_bund = data_raw.loc[data_raw.state == "Bund"]
 
     # infer key hierarchy from key numbers:
     data_bund = hierarchize_data(data_bund)
 
     # catalog is used for the key picker and table:
-    catalog = data_bund[["key", "label", "parent"]].drop_duplicates(subset="key")
+    catalog = data_bund[["key", "label", "parent", "sectionwidth"]].drop_duplicates(subset="key")
     catalog.label = catalog.label.str.replace("<br>", " ")
     catalog["label_key"] = catalog.apply(
         lambda row: row.label + " (" + row.key + ")", axis=1)
-
-    ts_key_selection = []
-    reset_n_clicks_old = 0
 
     # initial sunburst plot:
     sunburst = get_sunburst(

@@ -13,4 +13,4 @@ clean:
 	rm -rf .ipynb_checkpoints
 
 data:
-	./venv/bin/python3 -m src.data.import_data_pks
+	./venv/bin/python3 -m pks.src.data.import_data_pks

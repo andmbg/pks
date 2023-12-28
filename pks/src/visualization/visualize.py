@@ -172,6 +172,8 @@ def get_sunburst(df, colormap):
                 <extra></extra>"""
     hovertemplate = re.sub(r"([ ]{2,})|(\n)", "", hovertemplate)
 
+    # df["value"] = 1
+
     fig = px.sunburst(
         df,
         names='key',
@@ -180,6 +182,8 @@ def get_sunburst(df, colormap):
         color_discrete_map=colormap,
         hover_data=['label', 'key', 'nchildren'],
         maxdepth=2,
+        branchvalues="total",
+        values="sectionwidth",
     ).update_layout(margin=dict(t=15, r=15, b=15, l=15),
                     plot_bgcolor="#ffffff",
                     paper_bgcolor="rgba(255,255,255,0)",
