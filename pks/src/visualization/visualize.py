@@ -1,5 +1,6 @@
 import re
 import colorsys
+from textwrap import wrap
 
 import pandas as pd
 import numpy as np
@@ -164,6 +165,9 @@ def get_sunburst(df, colormap):
     # count children of each key for information in the plot:
     key_children_dict = df.groupby("parent").agg(len).key.to_dict()
     df["nchildren"] = df.key.apply(lambda k: key_children_dict.get(k, 0))
+    
+    # wrap long labels in hover data:
+    df.label = df.apply(lambda x: "<br>".join(wrap(x.label, 80)), axis=1)
     
     # change display name of root node:
     df.loc[df.key.eq("------"), "key"] = "Straftaten"
