@@ -276,8 +276,13 @@ def clean_labels(data: pd.DataFrame) -> pd.DataFrame:
     for pat, repl in replacements.items():
         data.shortlabel = data.shortlabel.str.replace(pat, repl, regex=True)
 
-    data.shortlabel = data.apply(lambda row: shorten(
-        row.shortlabel, width=90, placeholder="..."), axis=1)
+    data.shortlabel = data.apply(
+        lambda row: shorten(
+            row.shortlabel,
+            width=60,
+            placeholder="..."),
+        axis=1
+    )
 
     # for the full-length labels, add linebreaks for especially long exemplars:
     data.label = data.apply(lambda x: "<br>".join(wrap(x.label, 100)), axis=1)
@@ -329,7 +334,8 @@ if __name__ == "__main__":
     data_hr = hierarchize_data(data_marked)
     global_colormap = make_df_colormap(data_hr)
     data_hr["color"] = data_hr.key.apply(
-        lambda key: global_colormap[key])
+        lambda key: global_colormap[key]
+    )
 
     data_hr = data_hr.drop(["level", "parent"], axis=1)
 

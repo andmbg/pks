@@ -189,7 +189,7 @@ def get_sunburst(df, colormap):
         color='key',
         color_discrete_map=colormap,
         hover_data=['label', 'key', 'nchildren'],
-        maxdepth=2,
+        maxdepth=3,
         branchvalues="total",
         values="sectionwidth",
     ).update_layout(margin=dict(t=15, r=15, b=15, l=15),
@@ -204,7 +204,14 @@ def get_sunburst(df, colormap):
     return fig
 
 
-def get_presence_chart(df, keys, colormap, xaxis="year", yaxis="key", label_annot="shortlabel", label_hover="label", newname="label_change"):
+def get_presence_chart(
+    df, keys, colormap,
+    xaxis="year",
+    yaxis="key",
+    label_annot="shortlabel",
+    label_hover="label",
+    newname="label_change"
+):
     """
     Returns an existence chart indicating a set of keys and their existence through the years.
 
@@ -219,10 +226,6 @@ def get_presence_chart(df, keys, colormap, xaxis="year", yaxis="key", label_anno
     df = df.loc[df.key.isin(keys)].copy()
 
     df["firstlabel"] = df[label_annot]
-
-    # delete label were equal to previous:
-    # df = df.assign(label=df.apply(
-    #     lambda row: row[label_annot] if row[newname] else "Eintrag vorhanden", axis=1))
 
     df2 = pd.DataFrame()
 
@@ -242,6 +245,9 @@ def get_presence_chart(df, keys, colormap, xaxis="year", yaxis="key", label_anno
 
     # ensure right order of dots:
     df = df.sort_values(["key", "year"])
+    
+    # for hover, break long labels:
+    df["hoverlabel"] = df[label_hover].apply(lambda x: "<br>".join(wrap(x, width=60)))
 
     fig = go.Figure()
 
@@ -251,13 +257,13 @@ def get_presence_chart(df, keys, colormap, xaxis="year", yaxis="key", label_anno
             go.Scatter(
                 x=grp[xaxis],
                 y=grp[yaxis],
-                text=grp["firstlabel"],
-                mode="lines+markers+text",
+                # text=grp["firstlabel"],
+                mode="lines+markers",
                 marker=dict(color=colormap[i], size=12),
                 line_width=4,
-                textposition="top right",
+                # textposition="top right",
                 customdata=np.stack((
-                    grp[label_hover],
+                    grp["hoverlabel"],
                     grp["count"].apply(germanize_number)), axis=-1),
                 hovertemplate="<b>%{customdata[0]}</b> (%{x}):<br><br>%{customdata[1]} Fälle<extra></extra>"
             )
@@ -271,13 +277,32 @@ def get_presence_chart(df, keys, colormap, xaxis="year", yaxis="key", label_anno
             x=new_markers[xaxis],
             y=new_markers[yaxis],
             mode="markers",
-            marker=dict(color="black",
+            marker=dict(color="rgba(255,255,255,.7)",
                         line_width=2,
+                        line_color="white",
                         size=18,
-                        symbol="circle-open"),
-            hoverinfo="skip"
+                        symbol="circle"),
+            hoverinfo="skip",
         )
     )
+    
+    # annotation
+    # for annotations, fix x position to leftmost year:
+    annot_x = df.year.min()
+    
+    for i, grp in df.groupby(yaxis):
+        annot = grp.iloc[0]
+    
+        fig.add_trace(
+            go.Scatter(
+                x=[annot_x],
+                y=[annot[yaxis]],
+                mode="text",
+                text=annot["firstlabel"],
+                textposition="top right",
+                textfont=dict(size=18)
+            )
+        )
 
     fig.update_traces(showlegend=False)
     fig.update_xaxes(type="category")
