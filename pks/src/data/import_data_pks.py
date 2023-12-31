@@ -149,6 +149,7 @@ def hierarchize_data(data: pd.DataFrame, parent_col_name: str = "parent", level_
     Takes a PKS dataset and adds a column for level and parent denoting each entry's level and the name of its
     parent key.  Uses entirely the key numbers as a heuristic and treats keys with asterisks separately - they
     form a separate hierarchy that is joined with the rest.
+    In addition, adds a dummy entry with key="Straftaten"
 
     :param data: the PKS dataset
     :parent_col_name: if the name "parent" is not okay, set another one here
@@ -158,47 +159,51 @@ def hierarchize_data(data: pd.DataFrame, parent_col_name: str = "parent", level_
     
     data = data.filter(["year", "state", "key", "label", "shortlabel", "label_change", "count", "freq", "attempts", "clearance", "color"])
 
-    data = data.loc[~data.key.eq("------")]
+    allkeys = data.key.drop_duplicates().reset_index(drop=True)
+    root_key = allkeys.loc[allkeys.eq("------")]
 
-    allkeys = data.key.drop_duplicates()
-
-    # extra treatment for keys containing asterisks, as they all concern one theme (theft),
-    # and because they otherwise cause lots of headache in hierarchization:
+    # 3 separate key hierarchizations: numerical keys, keys containing "*",
+    # and the root key "------" is excluded.
     asterisk_keys = (allkeys
-                     .loc[allkeys.str.contains("*", regex=False)]
+                     .loc[
+                         allkeys.str.contains("*", regex=False)
+                     ]
                      .sort_values()
                      .reset_index(drop=True)
-                     )
+    )
     numeric_keys = (allkeys
-                    .loc[~allkeys.isin(asterisk_keys)]
+                    .loc[
+                        allkeys.str.match(r"^[0-9]{6}$")
+                    ]
                     .sort_values()
                     .reset_index(drop=True)
                     )
+    root_key = (allkeys
+                .loc[
+                    allkeys.eq("------")
+                ]
+                .reset_index(drop=True)
+                )
 
     # every key gets a parent based on the algorithm in hierarchize_keys():
     keys_hierarchized = pd.concat([
+        pd.DataFrame(root_key),
         hierarchize_keys(
             asterisk_keys, parent_col_name=parent_col_name, level_col_name=level_col_name),
         hierarchize_keys(
             numeric_keys, parent_col_name=parent_col_name, level_col_name=level_col_name)
-    ]).set_index("key")
-
-    # make an artificial root; nicer initial sunburst display and easier computation of
-    # section widths as next step:
-    keys_hierarchized = pd.concat([
-        pd.DataFrame({"key": ["Straftaten"],
-                      "level": [0],
-                      "parent": [None]}).set_index("key"),
-        keys_hierarchized
     ])
-    # change "None" parent to this new root for all level-1 entries:
-    keys_hierarchized.loc[keys_hierarchized.level.eq(1), "parent"] = "Straftaten"
-    
+
+    # add the root category:
+    keys_hierarchized.loc[keys_hierarchized.key.eq("------"), "level"] = [0]
+    keys_hierarchized.loc[keys_hierarchized.key.eq("------"), "parent"] = None
+    keys_hierarchized.loc[keys_hierarchized.level.eq(1), "parent"] = "------"
+
     # In order for plotly to space keys evenly on their level (instead of according to how
     # many total descendants they have), we need to work around the default by using its
     # display params. So here, we add an 'sb_angle' (sunburst angle) column that encodes
     # this width:
-    df = keys_hierarchized.copy().reset_index()
+    df = keys_hierarchized
  
     df["sectionwidth"] = 0.0
     df["width_on_level"] = None
@@ -210,6 +215,9 @@ def hierarchize_data(data: pd.DataFrame, parent_col_name: str = "parent", level_
 
     for level in range(7):
         
+        # since levels are stated explicitly in our data, we could also just go through
+        # them and set width to 1 / items on level. The procedure here is more general
+        # and would also work without stated levels.
         for parent, siblings_df in df.loc[df.level.eq(level)].groupby("parent"):
             width_on_level = 1 / len(siblings_df)
             parent_width = df.loc[df.key.eq(parent), "sectionwidth"].iloc[0]
@@ -225,13 +233,10 @@ def hierarchize_data(data: pd.DataFrame, parent_col_name: str = "parent", level_
         data,
         df,
         on="key",
-        how="left"
+        how="outer"
     ).reset_index()
-    # data_hier = (data
-    #              .set_index("key")
-    #              .join(df, how="left")
-    #              .reset_index()
-    #              )
+    
+    # set 
 
     return (data_hier)
 

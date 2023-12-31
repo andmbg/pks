@@ -164,15 +164,19 @@ def get_sunburst(df, colormap):
     # count children of each key for information in the plot:
     key_children_dict = df.groupby("parent").agg(len).key.to_dict()
     df["nchildren"] = df.key.apply(lambda k: key_children_dict.get(k, 0))
-
+    
+    # change display name of root node:
+    df.loc[df.key.eq("------"), "key"] = "Straftaten"
+    df.loc[df.parent.eq("------"), "parent"] = "Straftaten"
+    # set root color to transparent:
+    colormap["Straftaten"] = "rgba(0,0,0,0)"
+    
     hovertemplate = """
                 <b>%{customdata[1]}</b><br><br>
                 %{customdata[0]}<br>
                 (%{customdata[2]} Unterschlüssel)
                 <extra></extra>"""
     hovertemplate = re.sub(r"([ ]{2,})|(\n)", "", hovertemplate)
-
-    # df["value"] = 1
 
     fig = px.sunburst(
         df,
@@ -187,7 +191,8 @@ def get_sunburst(df, colormap):
     ).update_layout(margin=dict(t=15, r=15, b=15, l=15),
                     plot_bgcolor="#ffffff",
                     paper_bgcolor="rgba(255,255,255,0)",
-                    height=700
+                    height=700,
+                    font_size=18,
                     ).update_traces(hovertemplate=hovertemplate,
                                     leaf_opacity=1,
                                     ).update_coloraxes(showscale=False)

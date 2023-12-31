@@ -188,6 +188,14 @@ def init_dashboard(server):
             ],
                 style={"backgroundColor": "rgba(50,50,255, .1)"}
             ),
+            
+            # DEBUG: see what comes out of the sunburst clickdata:
+            # dbc.Row([
+            #     dbc.Col([
+            #         html.Div(id="location")
+            #     ])
+            # ]),
+            # ---------------------------------------------------
 
             # prose after selection
             dbc.Row([
@@ -306,6 +314,15 @@ def init_dashboard(server):
 
 def init_callbacks(app, data_bund, data_raw):
 
+    # DEBUG: display sunburst clickdata:
+    # @app.callback(
+    #     Output("location", "children"),
+    #     Input("fig-sunburst", "clickData")
+    # )
+    # def update_location(clickdata):
+    #     return(sunburst_location(clickdata))
+    # ---------------------------------
+
     # Update Presence chart
     @app.callback(Output("fig-key-presence", "figure"),
                   Input("fig-sunburst", "clickData"),
@@ -320,7 +337,7 @@ def init_callbacks(app, data_bund, data_raw):
 
             if key == "root" or key is None:  # just special syntax for when parent is None
                 child_keys = data_bund.loc[
-                    data_bund.parent.eq("Straftaten")
+                    data_bund.parent.eq("------")
                     ].key.unique()
             else:
                 child_keys = data_bund.loc[data_bund.parent == key].key.unique(
