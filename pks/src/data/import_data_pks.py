@@ -330,6 +330,7 @@ if __name__ == "__main__":
     # clean labels from §§ and so on, then mark label changes:
     data_clean = clean_labels(data)
     data_marked = mark_labelchange(data_clean)
+    # data_marked = data  # toggle comment for this and 2 prev rows for fast run
 
     data_hr = hierarchize_data(data_marked)
     global_colormap = make_df_colormap(data_hr)

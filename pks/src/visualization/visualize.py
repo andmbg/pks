@@ -1,12 +1,23 @@
 import re
 import colorsys
 from textwrap import wrap
+import logging
 
 import pandas as pd
 import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+
+from pks.src.visualization.colormap import hsv_to_css, hsvtraj, max_nchildren
+
+
+logging.basicConfig(
+    filename="dashboard.log",
+    filemode="w",
+    level=logging.DEBUG,
+    format='%(asctime)s %(levelname)s %(message)s'
+)
 
 
 def _css_rainbow(N=5, s=1, v=.75):
@@ -96,23 +107,70 @@ def germanize_number(number):
     return formatted_number
 
 
-def make_df_colormap(df: pd.DataFrame, keycolumn: str = "key") -> dict:
+def make_df_colormap(df):
     """
-    Derive from a crime stats dataset a color map {"key": "CSS color"} that
-    for each key distributes CSS colors among its children such that they
-    are maximally distinguishable visually. Used by plotly.
+    From the PKS dataset, create a colormap (dict) that follows some rules:
+    - children of a parent key are spread over a gamut around the parent's hue
+    - width of gamut and some other parameters can be set here
+    
+    :param df: the dataset
     """
-    df_colored = pd.DataFrame()
+    MAX_GAMUT = .75  # how wide the child spectrum may become under the parent with most children
+    MIN_GAMUT = .03  # if nchildren=2, their minimum gamut
+    # exponent of hue curve from MIN to MAX;
+    # 2 means the gamut grows late with family size
+    # .5 means small groups have stronger contrast in them
+    # 1 is linear
+    GAMUT_EXP = 1
+    
+    df = df.copy().drop_duplicates(subset="key")
+    
+    df["h"] = None
+    df["s"] = None
+    df["v"] = None
+    
+    # an index that for every family size returns a reasonable gamut width among children:
+    gam_unit = list(np.arange(0, (1+1/max_nchildren(df)), 1/(max_nchildren(df)-1)))
+    gam_curvature = [i ** GAMUT_EXP for i in gam_unit]
+    gam_curve = [MIN_GAMUT + (MAX_GAMUT-MIN_GAMUT)*i for i in gam_curvature]
 
-    for _, group in df.groupby("parent", dropna=False):
-        colors = _css_rainbow(len(group))
-        group["keycolor"] = colors
-        df_colored = pd.concat([df_colored, group])
+    # set lvl 1:
+    n1 = len(df.loc[df.level.eq(1)])
+    colors_1 = hsvtraj(n1, sa=1, sb=.7, va=.5, vb=.7)
+    df.loc[df.level.eq(1), "h"] = [i[0] for i in colors_1]
+    df.loc[df.level.eq(1), "s"] = [i[1] for i in colors_1]
+    df.loc[df.level.eq(1), "v"] = [i[2] for i in colors_1]
 
-    colormap = {k: v for k, v in zip(
-        df_colored[keycolumn].values, df_colored["keycolor"].values)}
+    # set lvl >1 recursively:    
+    for lv_parent, grp in df.loc[df.level.gt(1)].groupby(["level", "parent"], sort=True):
+        parent_row = df.loc[df.key.eq(lv_parent[1])]
+        parent_hue = parent_row["h"].iloc[0]
+        
+        nchildren = len(grp)
+        
+        gamut = gam_curve[nchildren-1]
 
-    return colormap
+        if lv_parent[1] == "622000":
+            logging.debug(
+                f"n={nchildren}; parent_hue={parent_hue}; gamut={gamut}"
+            )
+
+        childrens_hsv = hsvtraj(
+            n=nchildren,
+            ha=parent_hue - 0.5*gamut,
+            hb=parent_hue + 0.5*gamut,
+            sa=.6, sb=1,
+            va=1, vb=.6
+        )
+
+        df.loc[((df.level.eq(lv_parent[0])) & (df.parent.eq(lv_parent[1]))),"h"] = [i[0] for i in childrens_hsv]
+        df.loc[((df.level.eq(lv_parent[0])) & (df.parent.eq(lv_parent[1]))),"s"] = [i[1] for i in childrens_hsv]
+        df.loc[((df.level.eq(lv_parent[0])) & (df.parent.eq(lv_parent[1]))),"v"] = [i[2] for i in childrens_hsv]        
+    
+    df.loc[df.level.gt(0), "color"] = df.loc[df.level.gt(0)].apply(lambda x: hsv_to_css(x.h, x.s, x.v), axis=1)
+    df = df.drop(["h", "s", "v"], axis=1)
+    
+    return df[["key", "color"]].set_index("key").to_dict()["color"]
 
 
 def color_map_from_color_column(df):
