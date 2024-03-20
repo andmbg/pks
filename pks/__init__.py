@@ -6,7 +6,7 @@ from dash import Dash, dcc, html, Input, Output, State, callback, dash_table
 import dash_bootstrap_components as dbc
 
 from .src.data.import_data_pks import hierarchize_data
-from .src.data.config import MAXKEYS
+from config import MAXKEYS
 from .src.visualization.visualize import (
     empty_plot,
     sunburst_location,
@@ -21,7 +21,7 @@ from .src.visualization.visualize import (
 logging.basicConfig(
     filename="dashboard.log",
     filemode="w",
-    level=logging.DEBUG,
+    level=logging.INFO,
     format='%(asctime)s %(levelname)s %(message)s'
 )
 

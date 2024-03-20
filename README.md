@@ -12,14 +12,20 @@ Activate the virtual environment:
 source venv/bin/activate
 ```
 
-Import the data (this will take a few minutes):
+The imported dataset has originally been included with this repository. If it is missing, it can be reconstructed from
+the raw data files in `data/raw/`, which are Excel files directly taken from the relevant website (BKA).
+
+The import job will take a few minutes:
 
 ``` bash
 make data
 ```
 
-Run the app. Watch the command-line output for the URL (likely 'localhost:8050' or '127.0.0.1:8050').
+The app is ready to go now.
 
 ``` bash
 make run
 ```
+
+Open a browser and visit `localhost:8080` or `127.0.0.1:8080`. The port may change if you have another service running on 8080.
+`dashboard.log` should contain the exact address if the above one fails.
