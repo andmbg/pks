@@ -1,3 +1,4 @@
+import sys
 from pathlib import Path
 import logging
 
@@ -6,7 +7,6 @@ from dash import Dash, dcc, html, Input, Output, State, callback, dash_table
 import dash_bootstrap_components as dbc
 
 from .src.data.import_data_pks import hierarchize_data
-from config import MAXKEYS
 from .src.visualization.visualize import (
     empty_plot,
     sunburst_location,
@@ -17,6 +17,11 @@ from .src.visualization.visualize import (
     color_map_from_color_column,
 )
 
+# import from config relatively, so it remains portable:
+dashapp_rootdir = Path(__file__).resolve().parents[1]
+sys.path.append(str(dashapp_rootdir))
+
+from config import MAXKEYS
 
 logging.basicConfig(
     filename="dashboard.log",
@@ -24,9 +29,6 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s %(levelname)s %(message)s'
 )
-
-# allow relative path definitions:
-dashapp_rootdir = Path(__file__).resolve().parent.parent
 
 
 def init_dashboard(server):
