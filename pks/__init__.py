@@ -38,6 +38,7 @@ def init_dashboard(flask_app, route):
         __name__,
         server=flask_app,
         routes_pathname_prefix=route,
+        # relevant for standalone launch, not used by main flask app:
         external_stylesheets=[dbc.themes.FLATLY],
     )
 
