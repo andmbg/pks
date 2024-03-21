@@ -2,6 +2,7 @@ import sys
 from pathlib import Path
 import logging
 
+from flask import Flask
 import pandas as pd
 from dash import Dash, dcc, html, Input, Output, State, callback, dash_table
 import dash_bootstrap_components as dbc
@@ -31,7 +32,7 @@ logging.basicConfig(
 )
 
 
-def init_dashboard(server):
+def init_dashboard(flask_app, route):
 
     data_raw = pd.read_parquet(
         dashapp_rootdir / "data" / "processed" / "pks.parquet")
@@ -132,8 +133,8 @@ def init_dashboard(server):
     #                                   Layout
     # -----------------------------------------------------------------------------
     app = Dash(__name__,
-               server=server,
-               routes_pathname_prefix="/pks/",
+               server=flask_app,
+               routes_pathname_prefix=route,
                external_stylesheets=[dbc.themes.FLATLY],
                )
 
