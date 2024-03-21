@@ -21,7 +21,7 @@ from .src.visualization.visualize import (
 dashapp_rootdir = Path(__file__).resolve().parents[1]
 sys.path.append(str(dashapp_rootdir))
 
-from config import MAXKEYS
+from .config import MAXKEYS
 
 logging.basicConfig(
     filename="dashboard.log",
