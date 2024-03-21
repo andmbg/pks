@@ -34,6 +34,13 @@ logging.basicConfig(
 
 def init_dashboard(flask_app, route):
 
+    app = Dash(
+        __name__,
+        server=flask_app,
+        routes_pathname_prefix=route,
+        external_stylesheets=[dbc.themes.FLATLY],
+    )
+
     data_raw = pd.read_parquet(
         dashapp_rootdir / "data" / "processed" / "pks.parquet")
     data_bund = data_raw.loc[data_raw.state == "Bund"]
@@ -132,12 +139,7 @@ def init_dashboard(flask_app, route):
 
     #                                   Layout
     # -----------------------------------------------------------------------------
-    app = Dash(__name__,
-               server=flask_app,
-               routes_pathname_prefix=route,
-               external_stylesheets=[dbc.themes.FLATLY],
-               )
-
+    
     # define app layout:
     app.layout = html.Div([
 
@@ -312,7 +314,7 @@ def init_dashboard(flask_app, route):
 
     init_callbacks(app, data_bund, data_raw)
 
-    return app.server
+    return app#.server
 
 
 def init_callbacks(app, data_bund, data_raw):
