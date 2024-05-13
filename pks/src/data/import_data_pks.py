@@ -80,7 +80,7 @@ def hierarchize_keys(keylist: pd.Series, parent_col_name="parent", level_col_nam
 
     # (1) level: identify the level at which a key resides
 
-    df[level].iloc[0] = 1
+    df.iloc[0, df.columns.get_loc(level)] = 1
 
     for k in range(1, len(df)):
         key_i = df.key.iloc[k-1]
@@ -92,7 +92,7 @@ def hierarchize_keys(keylist: pd.Series, parent_col_name="parent", level_col_nam
                 this_level = digit + 1
                 break
 
-        df[level][k] = this_level
+        df.loc[k, level] = this_level
 
     # (2) parent: infer parent from whether each key is lower, higher or equal to its predecessor
 
@@ -104,14 +104,14 @@ def hierarchize_keys(keylist: pd.Series, parent_col_name="parent", level_col_nam
         this_keys_level = df[level].iloc[k]
 
         if this_keys_level == 1:
-            df[parent].iloc[k] = None
-            parents[1] = df.key.iloc[k]
+            df.iloc[k, df.columns.get_loc(parent)] = None
+            parents[1] = df.iloc[k, df.columns.get_loc("key")]
 
         elif this_keys_level > predecessor_level:
             # this condition also allows having a digit change >1 places behind the parent, so
             # we can have children with level 4 to parents with level 2.
-            df[parent].iloc[k] = df.key.iloc[k-1]
-            parents[this_keys_level] = df.key.iloc[k]
+            df.iloc[k, df.columns.get_loc(parent)] = df.iloc[k-1, df.columns.get_loc("key")]
+            parents[this_keys_level] = df.iloc[k, df.columns.get_loc("key")]
 
         elif this_keys_level < predecessor_level:
             # this works but should have a clearer structure.
@@ -121,8 +121,8 @@ def hierarchize_keys(keylist: pd.Series, parent_col_name="parent", level_col_nam
                 df[level].iloc[k])]  # limit to higher levels
             # level of the last higher key
             last_higher_level = search_area[level].iloc[-1]
-            df[parent].iloc[k] = parents[last_higher_level]
-            parents[this_keys_level] = df.key.iloc[k]
+            df.iloc[k, df.columns.get_loc(parent)] = parents[last_higher_level]
+            parents[this_keys_level] = df.iloc[k, df.columns.get_loc("key")]
 
         elif this_keys_level == predecessor_level:
             # this works but should have a clearer structure.
@@ -132,8 +132,8 @@ def hierarchize_keys(keylist: pd.Series, parent_col_name="parent", level_col_nam
                 df[level].iloc[k])]  # limit to higher levels
             # level of the last higher key
             last_higher_level = search_area[level].iloc[-1]
-            df[parent].iloc[k] = parents[last_higher_level]
-            parents[this_keys_level] = df.key.iloc[k]
+            df.iloc[k, df.columns.get_loc(parent)] = parents[last_higher_level]
+            parents[this_keys_level] = df.iloc[k, df.columns.get_loc("key")]
     
     # it's got hierarchy now, but we have children of level > n+1 to parents of level n.
     # re-set levels to "your parent's level + 1":
