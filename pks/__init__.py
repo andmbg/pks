@@ -25,7 +25,7 @@ sys.path.append(str(dashapp_rootdir))
 from .config import MAXKEYS
 
 logging.basicConfig(
-    filename="dashboard.log",
+    filename="logs/pks_app.log",
     filemode="w",
     level=logging.INFO,
     format='%(asctime)s %(levelname)s %(message)s'
