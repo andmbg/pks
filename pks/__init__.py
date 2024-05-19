@@ -158,7 +158,7 @@ def init_dashboard(flask_app, route):
                     lg={"size": 6, "offset": 3},
                 ),
             ],
-            # class_name= 
+            class_name="para",
             ),
 
             # browsing area
