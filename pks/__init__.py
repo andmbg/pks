@@ -157,9 +157,8 @@ def init_dashboard(flask_app, route):
                     xs={"size": 12},
                     lg={"size": 6, "offset": 3},
                 ),
-            ], style={"backgroundColor": "rgba(50,50,255, .1)",
-                      "paddingTop": "50px",
-                      },
+            ],
+            # class_name= 
             ),
 
             # browsing area
