@@ -155,10 +155,10 @@ def init_dashboard(flask_app, route):
                     md_intro
                 ],
                     xs={"size": 12},
-                    lg={"size": 6, "offset": 3},
+                    lg={"size": 8, "offset": 2},
                 ),
             ],
-            class_name="para",
+                class_name="para",
             ),
 
             # browsing area
@@ -181,7 +181,7 @@ def init_dashboard(flask_app, route):
                     )
                 ],
                     xs={"size": 6},
-                    lg={"size": 6},
+                    lg={"size": 6,},
                 ),
                 dbc.Col([
                     html.Div([fig_presence])
@@ -191,7 +191,7 @@ def init_dashboard(flask_app, route):
                 ),
                 dbc.Col([], width={"size": 1}),
             ],
-                style={"backgroundColor": "rgba(50,50,255, .1)"}
+                class_name="para mt-4",
             ),
             
             # DEBUG: see what comes out of the sunburst clickdata:
@@ -203,41 +203,15 @@ def init_dashboard(flask_app, route):
             # ---------------------------------------------------
 
             # prose after selection
-            dbc.Row([
-                dbc.Col(
-                    dbc.Collapse(
-                        md_post_selection,
-                        id="collapsible-post_selection",
-                        is_open=True,
-                    ),
-                    lg={"size": 6, "offset": 3},
-                    sm=10,
-                ),
-
-                dbc.Col(
-                    dbc.Button(
-                        "Ausblenden",
-                        id="button-collapse-post_selection",
-                        n_clicks=0,
-                    ),
-                    lg=2,
-                    align="center",
-                ),
-            ],
-                style={
-                    "backgroundColor": "rgba(255,200,0, .1)",
-                    "paddingTop": "30px"
-            }
-            ),
-
-            # reset button
             dbc.Row(
-                dbc.Col(
-                    html.Center([button_reset]),
-                    lg={"size": 6, "offset": 3},
-                    sm=12,
-                ),
-                style={"backgroundColor": "rgba(255,200,0, .1)"},
+                [
+                    dbc.Col(
+                        md_post_selection,
+                        lg={"size": 8, "offset": 2},
+                        sm=10,
+                    ),
+                ],
+                class_name="para mt-4",
             ),
 
             # clearance timeseries
@@ -246,44 +220,39 @@ def init_dashboard(flask_app, route):
                     fig_ts_clearance,
                     width=12
                 ),
-                style={"backgroundColor": "rgba(255,200,0,.1)"},
+                class_name="para mt-1"
             ),
 
-            # collapsible prose between timeseries
+            # reset button
+            dbc.Row(
+                dbc.Col(
+                    html.Center([button_reset]),
+                    lg={"size": 8, "offset": 2},
+                    sm=12,
+                ),
+            class_name="",
+            ),
+
+            # prose between timeseries
             dbc.Row([
                 dbc.Col(
-                    dbc.Collapse(
-                        md_between_ts,
-                        id="collapsible-post_ts",
-                        is_open=True,
-                    ),
-                    lg={"size": 6, "offset": 3},
-                    sm=10,
+                    md_between_ts,
+                    lg={"size": 8, "offset": 2},
+                    sm=12,
                 ),
-
-                dbc.Col(
-                    dbc.Button(
-                        "Ausblenden",
-                        id="button-collapse-post_ts",
-                        n_clicks=0,
-                    ),
-                    lg=2,
-                    align="center"
-                )
             ],
-                style={
-                    "backgroundColor": "rgba(255,100,0,.1)",
-                    "paddingTop": "30px",
-            },
+            class_name="para mt-4",
             ),
 
             # states timeseries
             dbc.Row(
-                dbc.Col(
-                    fig_ts_states,
-                    width=12,
-                    style={"backgroundColor": "rgba(255,100,0,.1)"},
-                )
+                [
+                    dbc.Col(
+                        fig_ts_states,
+                        width=12,
+                    )
+                ],
+                class_name="para mt-1"
             ),
 
             # post-dashboard text
@@ -291,10 +260,9 @@ def init_dashboard(flask_app, route):
                 dbc.Col(
                     md_post_ts,
                     xs={"size": 12},
-                    lg={"size": 6, "offset": 3}
+                    lg={"size": 8, "offset": 2}
                 ),
-                style={"backgroundColor": "rgba(0,0,0,.1)",
-                       "paddingTop": "30px"}
+                class_name="para mt-4"
             ),
 
             # row: Footer
@@ -307,6 +275,7 @@ def init_dashboard(flask_app, route):
                     ),
                     lg={"size": 6, "offset": 3},
                     sm=12,
+                    class_name="mt-4",
                 )
             ),
         ])
@@ -465,23 +434,3 @@ def init_callbacks(app, data_bund, data_raw):
         fig = get_ts_states(df_ts)
 
         return fig
-
-    @app.callback(
-        Output("collapsible-post_selection", "is_open"),
-        [Input("button-collapse-post_selection", "n_clicks")],
-        [State("collapsible-post_selection", "is_open")],
-    )
-    def toggle_collapse_post_selection(n, is_open):
-        if n:
-            return not is_open
-        return is_open
-
-    @app.callback(
-        Output("collapsible-post_ts", "is_open"),
-        [Input("button-collapse-post_ts", "n_clicks")],
-        [State("collapsible-post_ts", "is_open")],
-    )
-    def toggle_collapse_post_ts(n, is_open):
-        if n:
-            return not is_open
-        return is_open

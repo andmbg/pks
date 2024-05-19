@@ -477,9 +477,9 @@ def get_ts_clearance(df):
                                   xanchor="left",
                                   y=.99,
                                   x=.01,
-                                  bgcolor="rgba(255,255,255,.5)",
+                                  bgcolor="rgba(255,255,255,.6)",
                                   bordercolor="white",
-                                  borderwidth=1.5),
+                                  borderwidth=1),
                       font_size=18,
                       title="Jahresvergleich Fälle und Aufklärung"
                       )
