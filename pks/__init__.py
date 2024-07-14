@@ -28,7 +28,7 @@ logging.basicConfig(
     filename="logs/pks_app.log",
     filemode="w",
     level=logging.INFO,
-    format='%(asctime)s %(levelname)s %(message)s'
+    format="%(asctime)s %(levelname)s %(message)s",
 )
 
 
@@ -42,19 +42,20 @@ def init_dashboard(flask_app, route):
         external_stylesheets=[dbc.themes.FLATLY],
     )
 
-    data_raw = pd.read_parquet(
-        dashapp_rootdir / "data" / "processed" / "pks.parquet")
+    data_raw = pd.read_parquet(dashapp_rootdir / "data" / "processed" / "pks.parquet")
     data_bund = data_raw.loc[data_raw.state == "Bund"]
 
     # infer key hierarchy from key numbers:
     data_bund = hierarchize_data(data_bund)
 
     # catalog is used for the key picker and table:
-    catalog = data_bund[["key", "label", "parent",
-                         "sectionwidth"]].drop_duplicates(subset="key")
+    catalog = data_bund[["key", "label", "parent", "sectionwidth"]].drop_duplicates(
+        subset="key"
+    )
     catalog.label = catalog.label.str.replace("<br>", " ")
     catalog["label_key"] = catalog.apply(
-        lambda row: row.label + " (" + row.key + ")", axis=1)
+        lambda row: row.label + " (" + row.key + ")", axis=1
+    )
 
     # initial sunburst plot:
     sunburst = get_sunburst(
@@ -66,10 +67,7 @@ def init_dashboard(flask_app, route):
     # -----------------------------------------------------------------------------
 
     # Sunburst:
-    fig_sunburst = dcc.Graph(
-        id='fig-sunburst',
-        figure=sunburst
-    )
+    fig_sunburst = dcc.Graph(id="fig-sunburst", figure=sunburst)
 
     # DataTable for text search:
     table_search = dash_table.DataTable(
@@ -85,23 +83,20 @@ def init_dashboard(flask_app, route):
             "textOverflow": "ellipsis",
             "maxWidth": 0,
             "fontSize": 16,
-            "font-family": "sans-serif"},
+            "font-family": "sans-serif",
+        },
         css=[
             {"selector": ".dash-spreadsheet tr", "rule": "height: 45px;"},
-        ]
+        ],
     )
 
     # Presence chart:
     fig_presence = dcc.Graph(
-        id='fig-key-presence',
+        id="fig-key-presence",
     )
 
     # Reset button:
-    button_reset = dbc.Button(
-        "Leeren",
-        id="reset",
-        n_clicks=0
-    )
+    button_reset = dbc.Button("Leeren", id="reset", n_clicks=0)
 
     # Bar chart on clearance:
     fig_ts_clearance = dcc.Graph(
@@ -110,7 +105,7 @@ def init_dashboard(flask_app, route):
         figure=empty_plot(
             f"Bis zu {MAXKEYS} Schlüssel/Delikte<br>"
             "auswählen, um sie hier zu vergleichen!"
-        )
+        ),
     )
 
     # Line chart on states:
@@ -119,7 +114,7 @@ def init_dashboard(flask_app, route):
         style={"height": "600px"},
         figure=empty_plot(
             "Schlüssel/Delikte auswählen, um hier<br>den Ländervergleich zu sehen!"
-        )
+        ),
     )
 
     # Intro text
@@ -127,163 +122,170 @@ def init_dashboard(flask_app, route):
         md_intro = dcc.Markdown(file.read())
 
     # Prose between the selector area and clearance timeseries:
-    with open(dashapp_rootdir / "pks" / "src" / "prose" / "post_selection_pre_clearance.md", "r") as file:
+    with open(
+        dashapp_rootdir / "pks" / "src" / "prose" / "post_selection_pre_clearance.md",
+        "r",
+    ) as file:
         md_post_selection = dcc.Markdown(file.read())
 
     # Prose between the two timeseries:
-    with open(dashapp_rootdir / "pks" / "src" / "prose" / "post_clearance_pre_states.md", "r") as file:
+    with open(
+        dashapp_rootdir / "pks" / "src" / "prose" / "post_clearance_pre_states.md", "r"
+    ) as file:
         md_between_ts = dcc.Markdown(file.read())
 
     # Text following dashboard:
-    with open(dashapp_rootdir / "pks" / "src" / "prose" / "post_states.md", "r") as file:
+    with open(
+        dashapp_rootdir / "pks" / "src" / "prose" / "post_states.md", "r"
+    ) as file:
         md_post_ts = dcc.Markdown(file.read())
 
     #                                   Layout
     # -----------------------------------------------------------------------------
-    
+
     # define app layout:
-    app.layout = html.Div([
-
-        dbc.Container(style={"paddingTop": "50px"},
-                      children=[
-
-            dcc.Store(id="keystore", data=[]),
-
-            # Intro
-            dbc.Row([
-                dbc.Col([
-                    md_intro
-                ],
-                    xs={"size": 12},
-                    lg={"size": 8, "offset": 2},
-                ),
-            ],
-                class_name="para",
-            ),
-
-            # browsing area
-            dbc.Row([
-                dbc.Col([
-                    dbc.Tabs([
-                        dbc.Tab(
-                            [fig_sunburst],
-                            label="Blättern",
-                            tab_id="keypicker",
-                        ),
-                        dbc.Tab(
-                            [table_search],
-                            label="Suchen",
-                            tab_id="textsearch",
-                        ),
-                    ],
-                        id="tabs",
-                        active_tab="keypicker",
+    app.layout = html.Div(
+        [
+            html.Div(className="background-fixed"),
+            html.Div(
+                className="container",
+                children=[
+                    dbc.Container(
+                        style={"paddingTop": "50px"},
+                        children=[
+                            dcc.Store(id="keystore", data=[]),
+                            # Intro
+                            dbc.Row(
+                                [
+                                    dbc.Col(
+                                        [md_intro],
+                                        xs={"size": 12},
+                                        lg={"size": 8, "offset": 2},
+                                    ),
+                                ],
+                                class_name="para",
+                            ),
+                            # browsing area
+                            dbc.Row(
+                                [
+                                    dbc.Col(
+                                        [
+                                            dbc.Tabs(
+                                                [
+                                                    dbc.Tab(
+                                                        [fig_sunburst],
+                                                        label="Blättern",
+                                                        tab_id="keypicker",
+                                                    ),
+                                                    dbc.Tab(
+                                                        [table_search],
+                                                        label="Suchen",
+                                                        tab_id="textsearch",
+                                                    ),
+                                                ],
+                                                id="tabs",
+                                                active_tab="keypicker",
+                                            )
+                                        ],
+                                        xs={"size": 6},
+                                        lg={
+                                            "size": 6,
+                                        },
+                                    ),
+                                    dbc.Col(
+                                        [html.Div([fig_presence])],
+                                        xs={"size": 6},
+                                        lg={"size": 6},
+                                    ),
+                                    dbc.Col([], width={"size": 1}),
+                                ],
+                                class_name="para mt-4",
+                            ),
+                            # DEBUG: see what comes out of the sunburst clickdata:
+                            # dbc.Row([
+                            #     dbc.Col([
+                            #         html.Div(id="location")
+                            #     ])
+                            # ]),
+                            # ---------------------------------------------------
+                            # prose after selection
+                            dbc.Row(
+                                [
+                                    dbc.Col(
+                                        md_post_selection,
+                                        lg={"size": 8, "offset": 2},
+                                        sm=10,
+                                    ),
+                                ],
+                                class_name="para mt-4",
+                            ),
+                            # clearance timeseries
+                            dbc.Row(
+                                dbc.Col(fig_ts_clearance, width=12),
+                                class_name="para mt-1",
+                            ),
+                            # reset button
+                            dbc.Row(
+                                dbc.Col(
+                                    html.Center([button_reset]),
+                                    lg={"size": 8, "offset": 2},
+                                    sm=12,
+                                ),
+                                class_name="",
+                            ),
+                            # prose between timeseries
+                            dbc.Row(
+                                [
+                                    dbc.Col(
+                                        md_between_ts,
+                                        lg={"size": 8, "offset": 2},
+                                        sm=12,
+                                    ),
+                                ],
+                                class_name="para mt-4",
+                            ),
+                            # states timeseries
+                            dbc.Row(
+                                [
+                                    dbc.Col(
+                                        fig_ts_states,
+                                        width=12,
+                                    )
+                                ],
+                                class_name="para mt-1",
+                            ),
+                            # post-dashboard text
+                            dbc.Row(
+                                dbc.Col(
+                                    md_post_ts,
+                                    xs={"size": 12},
+                                    lg={"size": 8, "offset": 2},
+                                ),
+                                class_name="para mt-4",
+                            ),
+                            # row: Footer
+                            dbc.Row(
+                                dbc.Col(
+                                    html.Center(
+                                        "Quelle: PKS Bundeskriminalamt, Berichtsjahre 2013 bis 2022. "
+                                        "Es gilt die Datenlizenz Deutschland – Namensnennung – Version 2.0",
+                                        style={"height": "200px"},
+                                    ),
+                                    lg={"size": 6, "offset": 3},
+                                    sm=12,
+                                    class_name="mt-4",
+                                )
+                            ),
+                        ],
                     )
                 ],
-                    xs={"size": 6},
-                    lg={"size": 6,},
-                ),
-                dbc.Col([
-                    html.Div([fig_presence])
-                ],
-                    xs={"size": 6},
-                    lg={"size": 6},
-                ),
-                dbc.Col([], width={"size": 1}),
-            ],
-                class_name="para mt-4",
             ),
-            
-            # DEBUG: see what comes out of the sunburst clickdata:
-            # dbc.Row([
-            #     dbc.Col([
-            #         html.Div(id="location")
-            #     ])
-            # ]),
-            # ---------------------------------------------------
-
-            # prose after selection
-            dbc.Row(
-                [
-                    dbc.Col(
-                        md_post_selection,
-                        lg={"size": 8, "offset": 2},
-                        sm=10,
-                    ),
-                ],
-                class_name="para mt-4",
-            ),
-
-            # clearance timeseries
-            dbc.Row(
-                dbc.Col(
-                    fig_ts_clearance,
-                    width=12
-                ),
-                class_name="para mt-1"
-            ),
-
-            # reset button
-            dbc.Row(
-                dbc.Col(
-                    html.Center([button_reset]),
-                    lg={"size": 8, "offset": 2},
-                    sm=12,
-                ),
-            class_name="",
-            ),
-
-            # prose between timeseries
-            dbc.Row([
-                dbc.Col(
-                    md_between_ts,
-                    lg={"size": 8, "offset": 2},
-                    sm=12,
-                ),
-            ],
-            class_name="para mt-4",
-            ),
-
-            # states timeseries
-            dbc.Row(
-                [
-                    dbc.Col(
-                        fig_ts_states,
-                        width=12,
-                    )
-                ],
-                class_name="para mt-1"
-            ),
-
-            # post-dashboard text
-            dbc.Row(
-                dbc.Col(
-                    md_post_ts,
-                    xs={"size": 12},
-                    lg={"size": 8, "offset": 2}
-                ),
-                class_name="para mt-4"
-            ),
-
-            # row: Footer
-            dbc.Row(
-                dbc.Col(
-                    html.Center(
-                        "Quelle: PKS Bundeskriminalamt, Berichtsjahre 2013 bis 2022. "
-                        "Es gilt die Datenlizenz Deutschland – Namensnennung – Version 2.0",
-                        style={"height": "200px"}
-                    ),
-                    lg={"size": 6, "offset": 3},
-                    sm=12,
-                    class_name="mt-4",
-                )
-            ),
-        ])
-    ])
+        ]
+    )
 
     init_callbacks(app, data_bund, data_raw)
 
-    return app#.server
+    return app  # .server
 
 
 def init_callbacks(app, data_bund, data_raw):
@@ -298,10 +300,12 @@ def init_callbacks(app, data_bund, data_raw):
     # ---------------------------------
 
     # Update Presence chart
-    @app.callback(Output("fig-key-presence", "figure"),
-                  Input("fig-sunburst", "clickData"),
-                  Input("table-textsearch", "derived_viewport_data"),
-                  Input("tabs", "active_tab"))
+    @app.callback(
+        Output("fig-key-presence", "figure"),
+        Input("fig-sunburst", "clickData"),
+        Input("table-textsearch", "derived_viewport_data"),
+        Input("tabs", "active_tab"),
+    )
     def update_presence_chart(keypicker_parent, table_data, active_tab):
         """
         Presence chart
@@ -309,13 +313,12 @@ def init_callbacks(app, data_bund, data_raw):
         if active_tab == "keypicker":
             key = sunburst_location(keypicker_parent)
 
-            if key == "root" or key is None:  # just special syntax for when parent is None
-                child_keys = data_bund.loc[
-                    data_bund.parent.eq("------")
-                    ].key.unique()
+            if (
+                key == "root" or key is None
+            ):  # just special syntax for when parent is None
+                child_keys = data_bund.loc[data_bund.parent.eq("------")].key.unique()
             else:
-                child_keys = data_bund.loc[data_bund.parent == key].key.unique(
-                )
+                child_keys = data_bund.loc[data_bund.parent == key].key.unique()
             selected_keys = child_keys
 
         elif active_tab == "textsearch":
@@ -323,12 +326,11 @@ def init_callbacks(app, data_bund, data_raw):
             for element in table_data:
                 selected_keys.append(element["key"])
 
-        colormap = {k: grp.color.iloc[0]
-                    for k, grp in data_bund.groupby("key")}
+        colormap = {k: grp.color.iloc[0] for k, grp in data_bund.groupby("key")}
 
         fig = get_presence_chart(data_bund, selected_keys, colormap)
 
-        return (fig)
+        return fig
 
     # Update key store
     # ----------------
@@ -337,7 +339,7 @@ def init_callbacks(app, data_bund, data_raw):
         Output("keystore", "data", allow_duplicate=True),
         State("keystore", "data"),
         Input("fig-key-presence", "clickData"),
-        prevent_initial_call=True
+        prevent_initial_call=True,
     )
     def update_keystore(keyselection_old, click_presence):
 
@@ -356,7 +358,7 @@ def init_callbacks(app, data_bund, data_raw):
         Output("keystore", "data", allow_duplicate=True),
         Input("fig-ts-clearance", "clickData"),
         State("keystore", "data"),
-        prevent_initial_call=True
+        prevent_initial_call=True,
     )
     def update_keystore_from_timeseries(click_clearance, keyselection_old):
         key_to_remove = click_clearance["points"][0]["x"][0:6]
@@ -371,7 +373,7 @@ def init_callbacks(app, data_bund, data_raw):
     @app.callback(
         Output("keystore", "data", allow_duplicate=True),
         Input("reset", "n_clicks"),
-        prevent_initial_call=True
+        prevent_initial_call=True,
     )
     def reset_keystore(clickevent):
         return []
@@ -382,7 +384,8 @@ def init_callbacks(app, data_bund, data_raw):
     @app.callback(
         Output("fig-ts-clearance", "figure"),
         Input("keystore", "data"),
-        prevent_initial_call=True)
+        prevent_initial_call=True,
+    )
     def update_clearance_from_keystore(keylist):
 
         if keylist == []:
@@ -400,14 +403,22 @@ def init_callbacks(app, data_bund, data_raw):
         # prepare transformed columns for bar display:
         df_ts["unsolved"] = df_ts["count"] - df_ts.clearance
         df_ts["clearance_rate"] = df_ts.apply(
-            lambda r: round(r["clearance"] / r["count"] * 100, 1),
-            axis=1)
+            lambda r: round(r["clearance"] / r["count"] * 100, 1), axis=1
+        )
 
         # prepare long shape for consumption by plotting function:
         df_ts = pd.melt(
             df_ts,
-            id_vars=["key", "state", "year", "shortlabel", "label",
-                     "color", "clearance_rate", "count"],
+            id_vars=[
+                "key",
+                "state",
+                "year",
+                "shortlabel",
+                "label",
+                "color",
+                "clearance_rate",
+                "count",
+            ],
             value_vars=["clearance", "unsolved"],
         )
 
@@ -418,9 +429,11 @@ def init_callbacks(app, data_bund, data_raw):
     # Update state timeseries from keystore
     # -------------------------------------
 
-    @app.callback(Output("fig-ts-states", "figure"),
-                  Input("keystore", "data"),
-                  prevent_initial_call=True)
+    @app.callback(
+        Output("fig-ts-states", "figure"),
+        Input("keystore", "data"),
+        prevent_initial_call=True,
+    )
     def update_states_from_keystore(keylist):
 
         if keylist == []:
