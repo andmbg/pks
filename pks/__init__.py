@@ -222,7 +222,7 @@ def init_dashboard(flask_app, route):
                             dbc.Row(
                                 dbc.Col(fig_ts_clearance, width=12),
                                 class_name="para mt-1",
-                                style={"height": "750px"},
+                                # style={"height": "750px"},
                             ),
                             # reset button
                             dbc.Row(
