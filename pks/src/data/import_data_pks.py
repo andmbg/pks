@@ -349,6 +349,7 @@ if __name__ == "__main__":
         "972500",  # => illegale Einreise + Aufenthalt (in 725... enthalten)
         # "973000",  # => Rauschgiftdelikte (in 730... enthalten)
         "980100",  # => "Cybercrime insg."
+        "900200",  # => UN-Kram
     ])]
 
     data_hr.drop("index", axis=1, inplace=True)

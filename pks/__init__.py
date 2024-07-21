@@ -101,7 +101,6 @@ def init_dashboard(flask_app, route):
     # Bar chart on clearance:
     fig_ts_clearance = dcc.Graph(
         id="fig-ts-clearance",
-        style={"height": "600px"},
         figure=empty_plot(
             f"Bis zu {MAXKEYS} Schlüssel/Delikte<br>"
             "auswählen, um sie hier zu vergleichen!"
@@ -111,7 +110,7 @@ def init_dashboard(flask_app, route):
     # Line chart on states:
     fig_ts_states = dcc.Graph(
         id="fig-ts-states",
-        style={"height": "600px"},
+        # style={"height": "600px"},
         figure=empty_plot(
             "Schlüssel/Delikte auswählen, um hier<br>den Ländervergleich zu sehen!"
         ),
@@ -223,6 +222,7 @@ def init_dashboard(flask_app, route):
                             dbc.Row(
                                 dbc.Col(fig_ts_clearance, width=12),
                                 class_name="para mt-1",
+                                style={"height": "750px"},
                             ),
                             # reset button
                             dbc.Row(
