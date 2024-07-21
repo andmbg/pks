@@ -267,7 +267,7 @@ def init_dashboard(flask_app, route):
                             dbc.Row(
                                 dbc.Col(
                                     html.Center(
-                                        "Quelle: PKS Bundeskriminalamt, Berichtsjahre 2013 bis 2022. "
+                                        "Quelle: PKS Bundeskriminalamt, Berichtsjahre 2013 bis 2023. "
                                         "Es gilt die Datenlizenz Deutschland – Namensnennung – Version 2.0",
                                         style={"height": "200px"},
                                     ),
