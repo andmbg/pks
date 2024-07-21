@@ -363,7 +363,7 @@ def get_presence_chart(
         )
 
     fig.update_traces(showlegend=False)
-    fig.update_xaxes(type="category")
+    fig.update_xaxes(dtick=1)
     # fig.update_yaxes(autorange="reversed")
 
     # adapt height to number of keys displayed (space them evenly):

@@ -11,7 +11,8 @@ select_columns = {
     2019: ['Schlüssel',    'Straftat', 'Bundesland', 'erfasste Fälle',        'HZ nach Zensus', 'von Spalte 4 Versuche',          'Aufklärung'],
     2020: ['Schlüssel',    'Straftat', 'Bundesland', 'Anzahl erfasste Fälle', 'HZ',             'erfasste Fälle davon: Versuche', 'Aufklärung'],
     2021: ['Schlüssel',    'Straftat', 'Bundesland', 'Anzahl erfasste Fälle', 'HZ',             'erfasste Fälle davon: Versuche', 'Aufklärung'],
-    2022: ['Schlüssel',    'Straftat', 'Bundesland', 'Anzahl erfasste Fälle', 'HZ',             'erfasste Fälle davon: Versuche', 'Aufklärung']
+    2022: ['Schlüssel',    'Straftat', 'Bundesland', 'Anzahl erfasste Fälle', 'HZ',             'erfasste Fälle davon: Versuche', 'Aufklärung'],
+    2023: ['Schlüssel',    'Straftat', 'Bundesland', 'Anzahl erfasste Fälle', 'HZ',             'erfasste Fälle davon: Versuche', 'Aufklärung'],
 }
 
 # Spaltenbenennung vereinheitlichen
