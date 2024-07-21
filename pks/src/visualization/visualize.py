@@ -571,44 +571,52 @@ def get_ts_states(df):
     bgcolor_data = []
     annotations = []
 
-    fig = make_subplots(rows=1, cols=nkeys, horizontal_spacing=0.005)
+    fig = make_subplots(
+        rows=nkeys,
+        cols=1,
+        vertical_spacing=0.01,
+        shared_xaxes=True
+    )
 
-    for col, key in enumerate(df.key.unique(), start=1):
+    for row, key in enumerate(df.key.unique(), start=1):
 
-        for state, grp in df.loc[df.key.eq(key)].groupby("state"):
+        df_key = df.loc[df.key.eq(key)]
+
+        for state, grp in df_key.groupby("state"):
             trace = go.Scatter(
                 x=grp.year,
                 y=grp.freq,
                 name=states_abbreviations[state],
-                showlegend=col == 1,
+                showlegend=row == 1,
                 legendgroup=state,
                 mode="lines",
                 visible=True if state == "Bund" else "legendonly",
                 line=dict(color=state_colormap[state],
                           width=4 if state == "Bund" else 2)
             )
-            fig.add_trace(trace=trace, row=1, col=col)
+            fig.add_trace(trace=trace, row=row, col=1)
 
         # create manipulations that color our subplots differently (this is a hack
         # due to Plotly currently not offering varying bg colors per subplot)
-        xref = "x" if col == 1 else "x"+str(col)
+        yref = "y" if row == 1 else "y"+str(row)
 
-        # color bar
+        # faint color background:
         bgcolor_data.append(
             dict(
                 type='rect',
-                xref=xref, yref="paper",
-                x0=min(grp.year), x1=max(grp.year), y0=-.001, y1=1,
+                yref=yref, xref="paper",
+                y0=min(df_key.freq), y1=max(df_key.freq), x0=-.001, x1=1,
                 fillcolor=_desaturate_brighten(key_colormap[key], .7, .8),
                 layer='below',
                 line=dict(width=0)
             ),
         )
+        # vertical color stripe at x=0:
         bgcolor_data.append(
             dict(
                 type="rect",
-                xref=xref, yref="paper",
-                x0=min(grp.year), x1=max(grp.year), y0=.0, y1=.01,
+                xref="paper", yref=yref,
+                y0=min(df_key.freq), y1=max(df_key.freq), x0=-.005, x1=.0,
                 fillcolor=key_colormap[key],
                 layer="below",
                 line=dict(width=0)
@@ -616,15 +624,25 @@ def get_ts_states(df):
         )
 
         # for each facet, prepare the Facet's Annotation Points (fap):
-        fap_max = df.loc[df.key.eq(key)].freq.min()
-        fap_min = df.loc[df.key.eq(key)].freq.max()
-        fap = np.linspace(fap_min, fap_max, num=10)[[0, 3, 6, 9]]
+        # fap_max = df.loc[df.key.eq(key)].freq.min()
+        # fap_min = df.loc[df.key.eq(key)].freq.max()
+        # fap = np.linspace(fap_min, fap_max, num=10)[[0, 3, 6, 9]]
 
-        annotations.append(fap)
+        # annotations.append(fap)
 
-    fig.update_yaxes(showticklabels=False,
-                     showgrid=False,
-                     zeroline=False)
+        fig.update_layout(
+            {
+                f"yaxis{row if row > 1 else ''}": {
+                    "range": [df_key.freq.min(), df_key.freq.max()]
+                }
+            }
+        )
+
+    fig.update_yaxes(
+        # showticklabels=False,
+        showgrid=False,
+        zeroline=False
+    )
 
     fig.update_xaxes(showgrid=False)
 
@@ -635,7 +653,7 @@ def get_ts_states(df):
                     y=-.15,
                     yanchor="top"),
         paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(255,255,255,.5)",
         title=dict(
             text="Fälle je 100.000 Einwohner:innen im Ländervergleich",
             # y=1,
@@ -646,18 +664,19 @@ def get_ts_states(df):
         margin=dict(t=50),
         hovermode="x unified",
         # shade subplots according to their keys:
-        shapes=bgcolor_data
+        shapes=bgcolor_data,
+        height=nkeys * 300
     )
 
     # replacement for y-axis - use annotations prepared above
     # each facet:
-    for col, annots in enumerate(annotations):
-        xref = "x" if col == 0 else "x"+str(col+1)
+    for row, annots in enumerate(annotations):
+        yref = "x" if row == 0 else "x"+str(row+1)
 
         # three annotations
         for annot in annots:
             fig.add_annotation(
-                xref=xref,
+                xref=yref,
                 yref="y",
                 x=2013,
                 y=annot,
@@ -665,7 +684,7 @@ def get_ts_states(df):
                 font=dict(color="rgba(0,0,0,.3)"),
                 showarrow=False,
                 xanchor="left",
-                col=col+1, row=1
+                col=1, row=row+1
             )
 
     return fig
