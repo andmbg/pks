@@ -1,4 +1,4 @@
-# Polizeiliche Kriminalstatistik
+# German Police Crime Statistics
 
 *Dieses Dashboard gibt einen Einblick in die Polizeiliche Kriminalstatistik (PKS), die vom Bundeskriminalamt (BKA) jährlich veröffentlicht wird.*
 *In ihr werden bestimmte Straftaten oder Gruppen von Straftaten mit 6-stelligen Schlüsseln versehen, und jedes Jahr gibt es Zahlen dazu, etwa wie viele Taten je Schlüssel registriert und aufgeklärt wurden.*
