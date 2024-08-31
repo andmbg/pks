@@ -2,9 +2,9 @@ import sys
 from pathlib import Path
 import logging
 
-from flask import Flask
+# from flask import Flask
 import pandas as pd
-from dash import Dash, dcc, html, Input, Output, State, callback, dash_table
+from dash import Dash, dcc, html, Input, Output, State, dash_table#, callback
 import dash_bootstrap_components as dbc
 
 from .src.data.import_data_pks import hierarchize_data
@@ -285,7 +285,7 @@ def init_dashboard(flask_app, route):
 
     init_callbacks(app, data_bund, data_raw)
 
-    return app  # .server
+    return app#.server
 
 
 def init_callbacks(app, data_bund, data_raw):
