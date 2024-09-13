@@ -7,8 +7,8 @@ import pandas as pd
 from dash import Dash, dcc, html, Input, Output, State, callback, dash_table
 import dash_bootstrap_components as dbc
 
-from .src.i18n import translate as t, translate_series
 from .src.language_context import language_context
+from .src.i18n import translate as t, translate_series
 from .src.data.import_data_pks import hierarchize_data
 from .src.visualization.visualize import (
     empty_plot,
@@ -24,7 +24,7 @@ from .src.visualization.visualize import (
 dashapp_rootdir = Path(__file__).resolve().parents[1]
 sys.path.append(str(dashapp_rootdir))
 
-from .config import MAXKEYS
+from .config import MAXKEYS, current_language
 
 logging.basicConfig(
     filename="logs/pks_app.log",
@@ -36,7 +36,6 @@ logging.basicConfig(
 
 def init_dashboard(flask_app, route):
 
-    current_language = config.current_language
     language_context.set_language(current_language)
 
     app = Dash(
@@ -48,6 +47,12 @@ def init_dashboard(flask_app, route):
     )
 
     data_raw = pd.read_parquet(dashapp_rootdir / "data" / "processed" / "pks.parquet")
+
+    # translate labels if language != de:
+    if current_language != "de":
+        data_raw.label = translate_series(data_raw.label)
+        data_raw.shortlabel = translate_series(data_raw.shortlabel)
+
     data_bund = data_raw.loc[data_raw.state == "Bund"]
 
     # infer key hierarchy from key numbers:
@@ -180,12 +185,12 @@ def init_dashboard(flask_app, route):
                                                 [
                                                     dbc.Tab(
                                                         [fig_sunburst],
-                                                        label="Blättern",
+                                                        label=t("Blättern"),
                                                         tab_id="keypicker",
                                                     ),
                                                     dbc.Tab(
                                                         [table_search],
-                                                        label="Suchen",
+                                                        label=t("Suchen"),
                                                         tab_id="textsearch",
                                                     ),
                                                 ],
@@ -290,12 +295,12 @@ def init_dashboard(flask_app, route):
         ]
     )
 
-    init_callbacks(app, data_bund, data_raw)
+    init_callbacks(app, data_bund, data_raw, current_language)
 
     return app  # .server
 
 
-def init_callbacks(app, data_bund, data_raw):
+def init_callbacks(app, data_bund, data_raw, language):
 
     # DEBUG: display sunburst clickdata:
     # @app.callback(
@@ -306,6 +311,7 @@ def init_callbacks(app, data_bund, data_raw):
     #     return(sunburst_location(clickdata))
     # ---------------------------------
 
+
     # Update Presence chart
     @app.callback(
         Output("fig-key-presence", "figure"),
@@ -313,10 +319,12 @@ def init_callbacks(app, data_bund, data_raw):
         Input("table-textsearch", "derived_viewport_data"),
         Input("tabs", "active_tab"),
     )
-    def update_presence_chart(keypicker_parent, table_data, active_tab):
+    def update_presence_chart(keypicker_parent, table_data, active_tab, language=language):
         """
         Presence chart
         """
+        language_context.set_language(language)
+        
         if active_tab == "keypicker":
             key = sunburst_location(keypicker_parent)
 
@@ -393,7 +401,9 @@ def init_callbacks(app, data_bund, data_raw):
         Input("keystore", "data"),
         prevent_initial_call=True,
     )
-    def update_clearance_from_keystore(keylist):
+    def update_clearance_from_keystore(keylist, language=language):
+
+        language_context.set_language(language)
 
         if keylist == []:
             return empty_plot(
@@ -441,11 +451,13 @@ def init_callbacks(app, data_bund, data_raw):
         Input("keystore", "data"),
         prevent_initial_call=True,
     )
-    def update_states_from_keystore(keylist):
+    def update_states_from_keystore(keylist, language=language):
+
+        language_context.set_language(language)
 
         if keylist == []:
             return empty_plot(
-                "Schlüssel/Delikte auswählen, um hier<br>den Ländervergleich zu sehen!"
+                t("Schlüssel/Delikte auswählen, um hier<br>den Ländervergleich zu sehen!")
             )
 
         # filter on selected keys:

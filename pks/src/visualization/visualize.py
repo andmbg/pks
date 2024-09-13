@@ -10,6 +10,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 from ...src.visualization.colormap import hsv_to_css, hsvtraj, max_nchildren
+from ...src.i18n import translate as t
 
 
 logging.basicConfig(
@@ -324,11 +325,13 @@ def get_sunburst(df, colormap):
     # set root color to transparent:
     colormap["Straftaten"] = "rgba(0,0,0,0)"
 
-    hovertemplate = """
-                <b>%{customdata[1]}</b><br><br>
-                %{customdata[0]}<br>
-                (%{customdata[2]} Unterschlüssel)
-                <extra></extra>"""
+    hovertemplate = (
+        "<b>%{customdata[1]}</b><br><br>"
+        "%{customdata[0]}<br>"
+        "(%{customdata[2]} "
+        f"{t('Unterschlüssel')})"
+        "<extra></extra>"
+    )
     hovertemplate = re.sub(r"([ ]{2,})|(\n)", "", hovertemplate)
 
     fig = (
@@ -423,7 +426,10 @@ def get_presence_chart(
                 customdata=np.stack(
                     (grp["hoverlabel"], grp["count"].apply(germanize_number)), axis=-1
                 ),
-                hovertemplate="<b>%{customdata[0]}</b> (%{x}):<br><br>%{customdata[1]} Fälle<extra></extra>",
+                hovertemplate=(
+                    "<b>%{customdata[0]}</b> (%{x}):<br><br>%{customdata[1]} "
+                    f"{t('Fälle')}<extra></extra>"
+                )
             )
         )
 
@@ -535,21 +541,21 @@ def get_ts_clearance(df):
 
             hovertemplate_committed = "<br>".join(
                 [
-                    "Schlüssel %{customdata[0]}",
+                    f"{t('Schlüssel')}" + "%{customdata[0]}",
                     "<b>%{customdata[2]}</b><br>",
-                    "<b>Fälle im Jahr %{customdata[1]}: %{customdata[5]}</b>",
-                    "Unaufgeklärt: %{customdata[3]}",
-                    "Aufklärungsrate: %{customdata[4]} %<extra></extra>",
+                    f"<b>{t('Fälle im Jahr')} " + "%{customdata[1]}: %{customdata[5]}</b>",
+                    f"{t('Unaufgeklärt')}: " + "%{customdata[3]}",
+                    f"{t('Aufklärungsrate')}: " + "%{customdata[4]} %<extra></extra>",
                 ]
             )
 
             hovertemplate_unsolved = "<br>".join(
                 [
-                    "Schlüssel %{customdata[0]}",
+                    f"{t('Schlüssel')}" + "%{customdata[0]}",
                     "<b>%{customdata[2]}</b><br>",
-                    "Fälle im Jahr %{customdata[1]}: %{customdata[5]}",
-                    "<b>Unaufgeklärt: %{customdata[3]}</b>",
-                    "Aufklärungsrate: %{customdata[4]} %<extra></extra>",
+                    f"{t('Fälle im Jahr')} " + "%{customdata[1]}: %{customdata[5]}",
+                    f"<b>{t('Unaufgeklärt')}: " + "%{customdata[3]}</b>",
+                    f"{t('Aufklärungsrate')}: " + "%{customdata[4]} %<extra></extra>",
                 ]
             )
 
@@ -602,7 +608,7 @@ def get_ts_clearance(df):
             borderwidth=0,
         ),
         font_size=18,
-        title="Jahresvergleich Fälle und Aufklärung",
+        title=t("Jahresvergleich Fälle und Aufklärung"),
         height=750,
         yaxis=dict(
             ticks="outside",
@@ -639,7 +645,7 @@ def empty_ts_clearance(years):
         margin=dict(t=60, r=20),
         font_size=18,
         showlegend=False,
-        title="Jahresvergleich Fälle und Aufklärung",
+        title=t("Jahresvergleich Fälle und Aufklärung"),
     )
 
     fig.update_yaxes(gridcolor="rgba(.5,.5,.5,.5)", range=[0, 1], showticklabels=False)
@@ -814,7 +820,7 @@ def get_ts_states(df):
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(255,255,255,.5)",
         title=dict(
-            text="Fälle je 100.000 Einwohner:innen im Ländervergleich",
+            text=t("Fälle je 100.000 Einwohner:innen im Ländervergleich"),
             # y=1,
             # yanchor="top",
             # yref="container",
@@ -856,7 +862,7 @@ def empty_ts_states():
     fig.update_layout(
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,.1)",
-        title="Fälle je 100.000 Einwohner:innen im Ländervergleich",
+        title=t("Fälle je 100.000 Einwohner:innen im Ländervergleich"),
     )
 
     fig.update_xaxes(
@@ -871,7 +877,7 @@ def empty_ts_states():
     )
 
     fig.add_annotation(
-        text="Schlüssel/Delikt auswählen, um hier<br>den Ländervergleich zu sehen!",
+        text=t("Schlüssel/Delikt auswählen, um hier<br>den Ländervergleich zu sehen!"),
         x=0.5,
         y=0.5,
         xanchor="center",
@@ -892,7 +898,7 @@ def empty_plot(placeholder_text: str = "Hier könnte Ihre Werbung stehen!"):
     fig.update_layout(
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,.1)",
-        title="Fälle je 100.000 Einwohner:innen im Ländervergleich",
+        title=t("Fälle je 100.000 Einwohner:innen im Ländervergleich"),
     )
 
     fig.update_xaxes(

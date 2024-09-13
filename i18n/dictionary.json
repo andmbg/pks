@@ -7062,7 +7062,7 @@
         "EN-GB": "Entry or residence despite denial of the right to freedom of movement § 9 Freedom of Movement Act/EU"
     },
     "Straftaten gegen § 9 FreizügG/EU": {
-        "EN-GB": "Offences against § 9 FreizügG/EU"
+        "EN-GB": "Offences against § 9 Freedom of Movement Act/EU"
     },
     "Straftaten gegen das Sprengstoff-, das Waffen- und das Kriegswaffenkontrollgesetz davon:": {
         "EN-GB": "Offences against the Explosives Act, the Weapons Act and the War Weapons Control Act:"
@@ -7463,14 +7463,14 @@
     "Illegale Verbringung nichtgefährlicher Abfälle § 18b AbfVerbrG": {
         "EN-GB": "Illegal shipment of non-hazardous waste § 18b AbfVerbrG"
     },
-    "Straftaten insgesamt, jedoch ohne Verstöße gegen das Aufenthalts-, das Asylverfahrens- und das<br>Freizügigkeitsgesetz/EU (Schlüssel 7250)": {
-        "EN-GB": "Total offences, but excluding offences against the Residence Act, the Asylum Procedure Act and the<br>Freizügigkeitsgesetz/EU (key 7250)"
+    "Straftaten insgesamt, jedoch ohne Verstöße gegen das Aufenthalts-, das Asylverfahrens- und das<br>Freizügigkeitsgesetz/EU (Schlüssel 725000)": {
+        "EN-GB": "Total offences, but excluding offences against the Residence Act, the Asylum Procedure Act and the<br>Freedom of Movement Act/EU (key 725000)"
     },
     "Straftaten insgesamt, jedoch ohne Verstöße gegen das Aufenthalts-, das Asylverfahrens- und das<br>Freizügigkeitsgesetz/EU (Schlüssel 725000)": {
-        "EN-GB": "Total offences, but excluding offences against the Residence Act, the Asylum Procedure Act and the<br>Freizügigkeitsgesetz/EU (key 725000)"
+        "EN-GB": "Total offences, but excluding offences against the Residence Act, the Asylum Procedure Act and the<br>Freedom of Movement Act/EU (key 725000)"
     },
     "Straftaten insgesamt, jedoch ohne Verstöße gegen das Aufenthalts-, das Asyl- und das<br>Freizügigkeitsgesetz/EU (Schlüssel 725000)": {
-        "EN-GB": "Total offences, but excluding offences against the Residence, Asylum and<br>Freizügigkeitsgesetz/EU (key 725000)"
+        "EN-GB": "Total offences, but excluding offences against the Residence, Asylum and<br>Freedom of Movement Act/EU (key 725000)"
     },
     "Rauschgiftkriminalität darunter:": {
         "EN-GB": "Drug-related crime among them:"
@@ -7522,5 +7522,35 @@
     },
     "Crystal -Methamphetamin in kristalliner Form- (nur SB 731000, 732000, 733000)": {
         "EN-GB": "Crystal -methamphetamine in crystalline form- (only SB 731000, 732000, 733000)"
+    },
+    "Unterschlüssel": {
+        "EN-GB": "Subkeys"
+    },
+    "Blättern": {
+        "EN-GB": "Browse"
+    },
+    "Suchen": {
+        "EN-GB": "Search"
+    },
+    "Fälle": {
+        "EN-GB": "Cases"
+    },
+    "Schlüssel": {
+        "EN-GB": "Key"
+    },
+    "Fälle im Jahr": {
+        "EN-GB": "Cases in the year"
+    },
+    "Unaufgeklärt": {
+        "EN-GB": "Uncleared"
+    },
+    "Aufklärungsrate": {
+        "EN-GB": "Clearance rate"
+    },
+    "Fälle je 100.000 Einwohner:innen im Ländervergleich": {
+        "EN-GB": "Cases per 100,000 inhabitants in a country comparison"
+    },
+    "Jahresvergleich Fälle und Aufklärung": {
+        "EN-GB": "Annual comparison of cases and clarification"
     }
 }
