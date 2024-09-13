@@ -7,6 +7,8 @@ import pandas as pd
 from dash import Dash, dcc, html, Input, Output, State, callback, dash_table
 import dash_bootstrap_components as dbc
 
+from .src.i18n import translate as t, translate_series
+from .src.language_context import language_context
 from .src.data.import_data_pks import hierarchize_data
 from .src.visualization.visualize import (
     empty_plot,
@@ -33,6 +35,9 @@ logging.basicConfig(
 
 
 def init_dashboard(flask_app, route):
+
+    current_language = config.current_language
+    language_context.set_language(current_language)
 
     app = Dash(
         __name__,
@@ -73,7 +78,7 @@ def init_dashboard(flask_app, route):
     table_search = dash_table.DataTable(
         id="table-textsearch",
         columns=[
-            {"name": "Suchen:", "id": "label_key", "type": "text"},
+            {"name": t("Suchen:"), "id": "label_key", "type": "text"},
         ],
         data=catalog.to_dict("records"),
         filter_action="native",
@@ -96,14 +101,16 @@ def init_dashboard(flask_app, route):
     )
 
     # Reset button:
-    button_reset = dbc.Button("Leeren", id="reset", n_clicks=0)
+    button_reset = dbc.Button(t("Leeren"), id="reset", n_clicks=0)
 
     # Bar chart on clearance:
     fig_ts_clearance = dcc.Graph(
         id="fig-ts-clearance",
         figure=empty_plot(
-            f"Bis zu {MAXKEYS} Schlüssel/Delikte<br>"
-            "auswählen, um sie hier zu vergleichen!"
+            t(
+                f"Bis zu {MAXKEYS} Schlüssel/Delikte<br>"
+                "auswählen, um sie hier zu vergleichen!"
+            )
         ),
     )
 
@@ -112,32 +119,32 @@ def init_dashboard(flask_app, route):
         id="fig-ts-states",
         # style={"height": "600px"},
         figure=empty_plot(
-            "Schlüssel/Delikte auswählen, um hier<br>den Ländervergleich zu sehen!"
+            t("Schlüssel/Delikte auswählen, um hier<br>den Ländervergleich zu sehen!")
         ),
     )
 
     # Intro text
     with open(dashapp_rootdir / "pks" / "src" / "prose" / "intro.md", "r") as file:
-        md_intro = dcc.Markdown(file.read())
+        md_intro = dcc.Markdown(t(file.read()))
 
     # Prose between the selector area and clearance timeseries:
     with open(
         dashapp_rootdir / "pks" / "src" / "prose" / "post_selection_pre_clearance.md",
         "r",
     ) as file:
-        md_post_selection = dcc.Markdown(file.read())
+        md_post_selection = dcc.Markdown(t(file.read()))
 
     # Prose between the two timeseries:
     with open(
         dashapp_rootdir / "pks" / "src" / "prose" / "post_clearance_pre_states.md", "r"
     ) as file:
-        md_between_ts = dcc.Markdown(file.read())
+        md_between_ts = dcc.Markdown(t(file.read()))
 
     # Text following dashboard:
     with open(
         dashapp_rootdir / "pks" / "src" / "prose" / "post_states.md", "r"
     ) as file:
-        md_post_ts = dcc.Markdown(file.read())
+        md_post_ts = dcc.Markdown(t(file.read()))
 
     #                                   Layout
     # -----------------------------------------------------------------------------
