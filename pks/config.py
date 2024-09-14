@@ -6,4 +6,4 @@ language_codes = {
     "de": "DE",
     "en": "EN-GB",
 }
-current_language = "en"
+current_language = "de"
