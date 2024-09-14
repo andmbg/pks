@@ -407,8 +407,10 @@ def init_callbacks(app, data_bund, data_raw, language):
 
         if keylist == []:
             return empty_plot(
-                f"Bis zu {MAXKEYS} Schlüssel/Delikte<br>"
-                "auswählen, um sie hier zu vergleichen!"
+                t(
+                    f"Bis zu {MAXKEYS} Schlüssel/Delikte<br>"
+                    "auswählen, um sie hier zu vergleichen!"
+                )
             )
 
         # filter on selected keys:
