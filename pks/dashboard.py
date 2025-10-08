@@ -1,3 +1,4 @@
+import os
 import sys
 from pathlib import Path
 
@@ -350,8 +351,8 @@ with open(dashapp_rootdir / "pks" / "src" / "prose" / "title.md", "r") as file:
 
 app = Dash(
     __name__,
-    # routes_pathname_prefix=route,
-    # relevant for standalone launch, not used by main flask app:
+    requests_pathname_prefix=os.getenv('DASH_URL_PREFIX', '/'),
+    suppress_callback_exceptions=True,
 )
 
 starting_content, _, _ = make_main_content("de")
