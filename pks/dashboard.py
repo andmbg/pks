@@ -47,9 +47,9 @@ for language in language_codes:
     data_raw_all[language] = pd.read_parquet(
         dashapp_rootdir / "data" / "processed" / f"pks_{language}.parquet"
     )
-    data_bund_all[language] = data_raw_all[language].copy().loc[
-        data_raw_all[language].state == "Bund"
-    ]
+    data_bund_all[language] = (
+        data_raw_all[language].copy().loc[data_raw_all[language].state == "Bund"]
+    )
     data_bund_all[language] = hierarchize_data(data_bund_all[language])
 
 years_coverage = (
@@ -139,13 +139,11 @@ def make_main_content(language):
 
     layout = [
         dmc.Grid(
-            [
-                dmc.GridCol(
-                    [md_intro],
-                    span=dict(base=12, lg=8),
-                    offset=dict(lg=2),
-                )
-            ],
+            dmc.GridCol(
+                [md_intro],
+                span=dict(base=12, lg=8),
+                offset=dict(lg=2),
+            )
         ),
         # browsing area
         dmc.Grid(
@@ -301,7 +299,7 @@ def make_main_content(language):
             dmc.GridCol(
                 html.Center(
                     f"Quelle: PKS Bundeskriminalamt, Berichtsjahre {years_coverage[0]} "
-					f"bis {years_coverage[1]}. "
+                    f"bis {years_coverage[1]}. "
                     "Es gilt die Datenlizenz Deutschland – Namensnennung – Version 2.0",
                     style={"height": "200px"},
                 ),
@@ -329,6 +327,7 @@ theme_toggle = dmc.Switch(
     id="color-scheme-switch",
     persistence=True,
     color="grey",
+    size="md"
 )
 theme_store = dcc.Store(id="theme-store", data={"colorScheme": "light"})
 
@@ -338,10 +337,15 @@ language_toggle = dmc.Switch(
     id="language-switch",
     persistence=True,
     color="grey",
+    size="md",
 )
 language_store = dcc.Store(id="language-store", data="de")
 
 keystore = dcc.Store(id="keystore", data=[])
+
+# Title
+with open(dashapp_rootdir / "pks" / "src" / "prose" / "title.md", "r") as file:
+    md_title = html.Center(dcc.Markdown(t(file.read(), language), id="md-title"))
 
 
 app = Dash(
@@ -361,18 +365,36 @@ app.layout = html.Div(
             children=[
                 dmc.Container(
                     [
-                        dmc.Grid(
-                            [
-                                dmc.GridCol(
-                                    [
-                                        theme_toggle,
-                                        theme_store,
-                                        language_toggle,
-                                        language_store,
-                                        keystore,
-                                    ]
-                                )
-                            ]
+                        dmc.Paper(
+                            dmc.Grid(
+                                [
+                                    dmc.GridCol(
+                                        [
+                                            theme_toggle,
+                                            theme_store,
+                                            language_toggle,
+                                            language_store,
+                                            keystore,
+                                        ],
+                                        span=2,
+                                        style={
+                                            "display": "flex",
+                                            "justifyContent": "flex-end",
+                                            "alignItems": "center",
+                                            "gap": "1rem",
+                                        }
+                                    ),
+                                    dmc.GridCol(
+                                        [
+                                            md_title,
+                                        ],
+                                        span=dict(base=10, lg=8),
+                                        style={
+                                            "margin-bottom": "0",
+                                        }
+                                    ),
+                                ],
+                            ),
                         ),
                         html.Div(id="main-content", children=starting_content),
                     ],
@@ -452,10 +474,14 @@ def init_callbacks(app, data_raw):
 
     @app.callback(
         Output("language-store", "data"),
+        Output("md-title", "children"),
         Input("language-switch", "checked"),
     )
     def update_language_store(language_switch_checked):
-        return "en" if language_switch_checked else "de"
+        language = "en" if language_switch_checked else "de"
+        with open(dashapp_rootdir / "pks" / "src" / "prose" / "title.md", "r") as file:
+            title_text = t(file.read(), language)
+        return language, title_text
 
     @app.callback(
         Output("main-content", "children"),
@@ -640,7 +666,6 @@ def init_callbacks(app, data_raw):
 
         # filter on selected keys:
         df_ts = data_raw.loc[data_raw.key.isin(keylist)].reset_index()
-        logger.info(data_raw.state.unique())
 
         fig = get_ts_states(df_ts, language)
         template = "plotly_dark" if color_theme_switch else "plotly"

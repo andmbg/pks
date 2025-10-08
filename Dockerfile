@@ -14,10 +14,10 @@ COPY . .
 EXPOSE 8080
 
 # Set environment variable for Flask
-ENV FLASK_APP=pks.dashboard
+ENV FLASK_APP=app
 
 # Optionally set a default container name (can be overridden)
 ENV CONTAINER_NAME=PKS_DASHBOARD
 
 # Run the app
-CMD ["python", "-m", "pks.dashboard"]
+CMD ["python", "-m", "app"]
