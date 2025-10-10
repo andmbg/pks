@@ -556,7 +556,10 @@ def get_ts_clearance(df, language):
                 go.Bar(
                     x=[j],
                     y=committed["value"],
-                    marker=dict(color=colormap[j]),
+                    marker=dict(
+                        color=colormap[j],
+                        line_width=0,
+                    ),
                     showlegend=(j in legend_todo),
                     legendgroup=j,
                     name=committed.shortlabel.iloc[0],
@@ -573,8 +576,8 @@ def get_ts_clearance(df, language):
                     x=[j],
                     y=unsolved.value,
                     marker=dict(
-                        # color=_desaturate_brighten(colormap[j], 0.25, 0.5)
-                        color=colormap[j]
+                        color=colormap[j],
+                        line_width=0,
                     ),
                     opacity=0.5,
                     showlegend=False,
@@ -610,8 +613,7 @@ def get_ts_clearance(df, language):
         yaxis=dict(
             ticks="outside",
             ticklen=3,
-            tickcolor="black",
-            tickwidth=1.5,
+            tickwidth=2,
         )
     )
 
@@ -808,6 +810,7 @@ def get_ts_states(df, language):
         ticks="outside",
         tickwidth=1.5,
         tickcolor="white",
+        gridcolor="rgba(255, 255, 255, .25)",
     )
 
     fig.update_xaxes(showgrid=False)

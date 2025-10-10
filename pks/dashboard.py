@@ -328,7 +328,7 @@ theme_toggle = dmc.Switch(
     id="color-scheme-switch",
     persistence=True,
     color="grey",
-    size="md"
+    size="md",
 )
 theme_store = dcc.Store(id="theme-store", data={"colorScheme": "light"})
 
@@ -351,7 +351,7 @@ with open(dashapp_rootdir / "pks" / "src" / "prose" / "title.md", "r") as file:
 
 app = Dash(
     __name__,
-    requests_pathname_prefix=os.getenv('DASH_URL_PREFIX', '/'),
+    requests_pathname_prefix=os.getenv("DASH_URL_PREFIX", "/"),
     suppress_callback_exceptions=True,
 )
 
@@ -383,7 +383,7 @@ app.layout = html.Div(
                                             "justifyContent": "flex-end",
                                             "alignItems": "center",
                                             "gap": "1rem",
-                                        }
+                                        },
                                     ),
                                     dmc.GridCol(
                                         [
@@ -392,7 +392,7 @@ app.layout = html.Div(
                                         span=dict(base=10, lg=8),
                                         style={
                                             "margin-bottom": "0",
-                                        }
+                                        },
                                     ),
                                 ],
                             ),
@@ -513,7 +513,7 @@ def init_callbacks(app, data_raw):
         if active_tab == "keypicker":
             key = sunburst_location(keypicker_parent)
 
-            if key == "root" or key is None:  # special case: parent is None
+            if not key or key in ["root", "Straftaten"]:  # special case: parent is None
                 child_keys = data_bund.loc[data_bund.parent.eq("------")].key.unique()
             else:
                 child_keys = data_bund.loc[data_bund.parent == key].key.unique()
@@ -542,7 +542,7 @@ def init_callbacks(app, data_raw):
     def update_keystore(keyselection_old, click_presence):
 
         if click_presence:
-            key_selection_new = keyselection_old
+            key_selection_new = keyselection_old or []
             key_to_add = click_presence["points"][0]["y"]
             if len(key_selection_new) < MAXKEYS:
                 key_selection_new.append(key_to_add)
@@ -593,7 +593,7 @@ def init_callbacks(app, data_raw):
 
         template = "plotly_dark" if color_theme_switch else "plotly"
 
-        if keylist == []:
+        if not keylist:
             return empty_plot(
                 t(
                     f"Bis zu {MAXKEYS} Schlüssel/Delikte<br>"
