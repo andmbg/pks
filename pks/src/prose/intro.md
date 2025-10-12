@@ -1,4 +1,4 @@
-*Die Kriminalstatistik ist bisweilen unübersichtlich und umfangreich -- von ihren empirischen Problemen einmal abgesehen.*
+*Die Kriminalstatistik ist bisweilen unübersichtlich und umfangreich -- von ihren [empirischen Problemen](https://lagedernation.org/podcast/ldn377-tuecken-der-polizeilichen-kriminalstatistik-martin-thuene-fachhochschule-fuer-verwaltung-und-dienstleistung-bverfg-staerkt-rechte-von-vaetern-und-kindern-kindergrundsicherung-schlecht-gepl/?t=02%3A36) einmal abgesehen.*
 *Dieses Dashboard erlaubt es, per Suche oder thematischem Stöbern beliebige Deliktgruppen zu untersuchen und Tendenzen über die Jahre hinweg zu betrachten und zu vergleichen.*
 
 Der obere Teil dient der Schlüsselauswahl: Links lässt sich durch die thematisch geordneten Schlüssel blättern oder nach Schlüsseln suchen.
