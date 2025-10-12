@@ -8,7 +8,7 @@ install: requirements.txt
 	./venv/bin/pip install -r requirements.txt
 
 run: venv/bin/activate
-	$(python) -m pks.dashboard
+	$(python) -m app
 
 clean:
 	rm -rf __pycache__

@@ -2,59 +2,62 @@ import sys
 import os
 from typing import Annotated
 from textwrap import wrap, shorten
-import logging
 
 import pandas as pd
+from loguru import logger
 
-from ..data.config import colname_map, select_columns
+from config import colname_map, select_columns, language_codes
+from pks.src.i18n import translate_series
+
 from ..visualization.visualize import make_df_colormap
-
-
-sys.path.append("..")  # necessary when used by a notebook
-logging.basicConfig(
-    filename="data_import.log",
-    level=logging.DEBUG,      # Set the logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
-    format="%(asctime)s %(levelname)s %(message)s",
-    filemode="w"
-)
 
 
 # loading function takes over column selection, naming, historization and string cleaning:
 def _load_n_trim(dir, yr, columns):
     """
     Hilfsfunktion.
-    Lädt einen DataFrame und 
+    Lädt einen DataFrame und
     """
-    logging.info(f"Opening Excel file PKS{yr}.xlsx.")
-    data = (pd.read_excel(f"{dir}/PKS{yr}.xlsx")[columns]
-            .set_axis(['key', 'label', 'state', 'count', 'freq', 'attempts', 'clearance'], axis=1)
-            .rename(colname_map)
-            .assign(**{"year": yr})
-            )
+    logger.info(f"Opening Excel file PKS{yr}.xlsx.")
+    data = (
+        pd.read_excel(f"{dir}/PKS{yr}.xlsx")[columns]
+        .set_axis(
+            ["key", "label", "state", "count", "freq", "attempts", "clearance"], axis=1
+        )
+        .rename(colname_map)
+        .assign(**{"year": yr})
+    )
 
     # remove non-breaking spaces
-    data.label = data.label.str.replace(u"\xa0", u" ")
+    data.label = data.label.str.replace("\xa0", " ")
 
     return data
 
 
-def import_data(indirpath: Annotated[str, "Quellordner mit den Excel-Dateien"],
-                outfilepath: Annotated[str, "Zielordner und -Dateiname für die parquet-Datei"],
-                format: str = "parquet") -> None:
+def import_data(
+    indirpath: Annotated[str, "Quellordner mit den Excel-Dateien"],
+    outfilepath: Annotated[str, "Zielordner und -Dateiname für die parquet-Datei"],
+    format: str = "parquet",
+) -> None:
     """
     Daten aus den heruntergeladenen Excel-Dateien in einen sauberen Datenframe importieren.
     """
-    logging.info(f"Importing Data from {indirpath} to {outfilepath}.")
-    data = pd.concat([_load_n_trim(indirpath, yr, columns)
-                     for yr, columns in select_columns.items()])
+    logger.info(f"Importing Data from {indirpath} to {outfilepath}.")
+    data = pd.concat(
+        [_load_n_trim(indirpath, yr, columns) for yr, columns in select_columns.items()]
+    )
 
     # Label 'Bund' vereinheitlichen:
-    data.replace({"Bund echte Zählung der Tatverdächtigen": "Bund",
-                  "Bundesrepublik Deutschland": "Bund"}, inplace=True)
+    data.replace(
+        {
+            "Bund echte Zählung der Tatverdächtigen": "Bund",
+            "Bundesrepublik Deutschland": "Bund",
+        },
+        inplace=True,
+    )
 
     # Index und Sortierung:
-    data.set_index(["year", "state", "key",
-                   "label"], inplace=True)
+    data.set_index(["year", "state", "key", "label"], inplace=True)
     data.sort_index(inplace=True)
     data.reset_index(inplace=True)
 
@@ -65,25 +68,25 @@ def import_data(indirpath: Annotated[str, "Quellordner mit den Excel-Dateien"],
         data.to_csv(outfilepath)
 
 
-def hierarchize_keys(keylist: pd.Series, parent_col_name="parent", level_col_name="level") -> pd.DataFrame:
+def hierarchize_keys(
+    keylist: pd.Series, parent_col_name="parent", level_col_name="level"
+) -> pd.DataFrame:
     """
     Takes a unique key list, adds columns for inferred levels and parents.
     """
-    logging.info(f"Hierarchizing key list of {len(keylist)} entries.")
+    logger.debug(f"Hierarchizing key list of {len(keylist)} entries.")
     level = level_col_name
     parent = parent_col_name
 
     # the shape of the result:
-    df = pd.DataFrame({"key": keylist,
-                       level: None,
-                       parent: None})
+    df = pd.DataFrame({"key": keylist, level: None, parent: None})
 
     # (1) level: identify the level at which a key resides
 
     df.iloc[0, df.columns.get_loc(level)] = 1
 
     for k in range(1, len(df)):
-        key_i = df.key.iloc[k-1]
+        key_i = df.key.iloc[k - 1]
         key_j = df.key.iloc[k]
 
         # this key's leftmost character change = level:
@@ -100,7 +103,7 @@ def hierarchize_keys(keylist: pd.Series, parent_col_name="parent", level_col_nam
     parents = [None, df.key.iloc[0], None, None, None, None, None]
 
     for k in range(1, len(df)):
-        predecessor_level = df[level].iloc[k-1]
+        predecessor_level = df[level].iloc[k - 1]
         this_keys_level = df[level].iloc[k]
 
         if this_keys_level == 1:
@@ -110,15 +113,18 @@ def hierarchize_keys(keylist: pd.Series, parent_col_name="parent", level_col_nam
         elif this_keys_level > predecessor_level:
             # this condition also allows having a digit change >1 places behind the parent, so
             # we can have children with level 4 to parents with level 2.
-            df.iloc[k, df.columns.get_loc(parent)] = df.iloc[k-1, df.columns.get_loc("key")]
+            df.iloc[k, df.columns.get_loc(parent)] = df.iloc[
+                k - 1, df.columns.get_loc("key")
+            ]
             parents[this_keys_level] = df.iloc[k, df.columns.get_loc("key")]
 
         elif this_keys_level < predecessor_level:
             # this works but should have a clearer structure.
             # look at all above
             search_area = df.loc[df.key.lt(df.key.iloc[k])]
-            search_area = search_area.loc[search_area[level].lt(
-                df[level].iloc[k])]  # limit to higher levels
+            search_area = search_area.loc[
+                search_area[level].lt(df[level].iloc[k])
+            ]  # limit to higher levels
             # level of the last higher key
             last_higher_level = search_area[level].iloc[-1]
             df.iloc[k, df.columns.get_loc(parent)] = parents[last_higher_level]
@@ -128,13 +134,14 @@ def hierarchize_keys(keylist: pd.Series, parent_col_name="parent", level_col_nam
             # this works but should have a clearer structure.
             # look at all above
             search_area = df.loc[df.key.lt(df.key.iloc[k])]
-            search_area = search_area.loc[search_area[level].lt(
-                df[level].iloc[k])]  # limit to higher levels
+            search_area = search_area.loc[
+                search_area[level].lt(df[level].iloc[k])
+            ]  # limit to higher levels
             # level of the last higher key
             last_higher_level = search_area[level].iloc[-1]
             df.iloc[k, df.columns.get_loc(parent)] = parents[last_higher_level]
             parents[this_keys_level] = df.iloc[k, df.columns.get_loc("key")]
-    
+
     # it's got hierarchy now, but we have children of level > n+1 to parents of level n.
     # re-set levels to "your parent's level + 1":
     for lab, grp in df.groupby(["level", "parent"], sort=True):
@@ -144,7 +151,9 @@ def hierarchize_keys(keylist: pd.Series, parent_col_name="parent", level_col_nam
     return df
 
 
-def hierarchize_data(data: pd.DataFrame, parent_col_name: str = "parent", level_col_name: str = "level") -> pd.DataFrame:
+def hierarchize_data(
+    data: pd.DataFrame, parent_col_name: str = "parent", level_col_name: str = "level"
+) -> pd.DataFrame:
     """
     Takes a PKS dataset and adds a column for level and parent denoting each entry's level and the name of its
     parent key.  Uses entirely the key numbers as a heuristic and treats keys with asterisks separately - they
@@ -155,44 +164,57 @@ def hierarchize_data(data: pd.DataFrame, parent_col_name: str = "parent", level_
     :parent_col_name: if the name "parent" is not okay, set another one here
     :level_col_name: if the name "level" is not okay, set another one here
     """
-    logging.info("Hierarchizing data.")
-    
-    data = data.filter(["year", "state", "key", "label", "shortlabel", "label_change", "count", "freq", "attempts", "clearance", "color"])
+    logger.debug("Hierarchizing data.")
+
+    data = data.filter(
+        [
+            "year",
+            "state",
+            "key",
+            "label",
+            "shortlabel",
+            "label_change",
+            "count",
+            "freq",
+            "attempts",
+            "clearance",
+            "color",
+        ]
+    )
 
     allkeys = data.key.drop_duplicates().reset_index(drop=True)
     root_key = allkeys.loc[allkeys.eq("------")]
 
     # 3 separate key hierarchizations: numerical keys, keys containing "*",
     # and the root key "------" is excluded.
-    asterisk_keys = (allkeys
-                     .loc[
-                         allkeys.str.contains("*", regex=False)
-                     ]
-                     .sort_values()
-                     .reset_index(drop=True)
+    asterisk_keys = (
+        allkeys.loc[allkeys.str.contains("*", regex=False)]
+        .sort_values()
+        .reset_index(drop=True)
     )
-    numeric_keys = (allkeys
-                    .loc[
-                        allkeys.str.match(r"^[0-9]{6}$")
-                    ]
-                    .sort_values()
-                    .reset_index(drop=True)
-                    )
-    root_key = (allkeys
-                .loc[
-                    allkeys.eq("------")
-                ]
-                .reset_index(drop=True)
-                )
+    numeric_keys = (
+        allkeys.loc[allkeys.str.match(r"^[0-9]{6}$")]
+        .sort_values()
+        .reset_index(drop=True)
+    )
+    root_key = allkeys.loc[allkeys.eq("------")].reset_index(drop=True)
 
     # every key gets a parent based on the algorithm in hierarchize_keys():
-    keys_hierarchized = pd.concat([
-        pd.DataFrame(root_key),
-        hierarchize_keys(
-            asterisk_keys, parent_col_name=parent_col_name, level_col_name=level_col_name),
-        hierarchize_keys(
-            numeric_keys, parent_col_name=parent_col_name, level_col_name=level_col_name)
-    ])
+    keys_hierarchized = pd.concat(
+        [
+            pd.DataFrame(root_key),
+            hierarchize_keys(
+                asterisk_keys,
+                parent_col_name=parent_col_name,
+                level_col_name=level_col_name,
+            ),
+            hierarchize_keys(
+                numeric_keys,
+                parent_col_name=parent_col_name,
+                level_col_name=level_col_name,
+            ),
+        ]
+    )
 
     # add the root category:
     keys_hierarchized.loc[keys_hierarchized.key.eq("------"), "level"] = [0]
@@ -204,17 +226,17 @@ def hierarchize_data(data: pd.DataFrame, parent_col_name: str = "parent", level_
     # display params. So here, we add an 'sb_angle' (sunburst angle) column that encodes
     # this width:
     df = keys_hierarchized
- 
+
     df["sectionwidth"] = 0.0
     df["width_on_level"] = None
     df.loc[df.level.eq(0), "sectionwidth"] = 1.0
     df.loc[df.level.eq(0), "width_on_level"] = 1
     df.loc[df.level.eq(0), "parent"] = None
 
-    logging.debug("Setting the section widths for keys.")
+    logger.debug("Setting the section widths for keys.")
 
     for level in range(7):
-        
+
         # since levels are stated explicitly in our data, we could also just go through
         # them and set width to 1 / items on level. The procedure here is more general
         # and would also work without stated levels.
@@ -229,21 +251,16 @@ def hierarchize_data(data: pd.DataFrame, parent_col_name: str = "parent", level_
     df = df.drop("width_on_level", axis=1)
 
     # join this hierarchy information to the actual crime data:
-    data_hier = pd.merge(
-        data,
-        df,
-        on="key",
-        how="outer"
-    ).reset_index()
-    
-    # set 
+    data_hier = pd.merge(data, df, on="key", how="outer").reset_index()
 
-    return (data_hier)
+    # set
+
+    return data_hier
 
 
 def clean_labels(data: pd.DataFrame) -> pd.DataFrame:
-    
-    logging.info("Cleaning labels.")
+
+    logger.info("Cleaning labels.")
 
     # nonbreaking spaces
     data.label = data.label.str.replace(r"[\u00A0]", " ", regex=True)
@@ -270,18 +287,13 @@ def clean_labels(data: pd.DataFrame) -> pd.DataFrame:
     }
 
     for removable in removables:
-        data.shortlabel = data.shortlabel.str.replace(
-            removable, "", regex=True)
+        data.shortlabel = data.shortlabel.str.replace(removable, "", regex=True)
 
     for pat, repl in replacements.items():
         data.shortlabel = data.shortlabel.str.replace(pat, repl, regex=True)
 
     data.shortlabel = data.apply(
-        lambda row: shorten(
-            row.shortlabel,
-            width=60,
-            placeholder="..."),
-        axis=1
+        lambda row: shorten(row.shortlabel, width=60, placeholder="..."), axis=1
     )
 
     # for the full-length labels, add linebreaks for especially long exemplars:
@@ -294,7 +306,7 @@ def mark_labelchange(data: pd.DataFrame) -> pd.DataFrame:
     """
     Mark where the label of a key has changed compared to the previous year.
     """
-    logging.info("Marking label changes for display.")
+    logger.info("Marking label changes for display.")
     data = data.sort_values(["state", "key", "year"])
     data["label_change"] = False
 
@@ -312,18 +324,8 @@ def mark_labelchange(data: pd.DataFrame) -> pd.DataFrame:
 if __name__ == "__main__":
 
     # transport the data from Excel files to a processable form without much processing:
-    
-    logging.info("Checking if interim file already exists.")
-    
     outfilepath = "data/interim/pks.parquet"
-
-    if os.path.exists(outfilepath):
-       logging.info("It does.")
-    else:
-        import_data(
-            indirpath="data/raw/",
-            outfilepath=outfilepath
-        )
+    import_data(indirpath="data/raw/", outfilepath=outfilepath)
 
     data = pd.read_parquet("data/interim/pks.parquet")
 
@@ -334,25 +336,43 @@ if __name__ == "__main__":
 
     data_hr = hierarchize_data(data_marked)
     global_colormap = make_df_colormap(data_hr)
-    data_hr["color"] = data_hr.key.apply(
-        lambda key: global_colormap[key]
-    )
+    data_hr["color"] = data_hr.key.apply(lambda key: global_colormap[key])
 
     data_hr = data_hr.drop(["level", "parent"], axis=1)
 
     # manuelle Löschung störender Summenschlüssel
-    data_hr = data_hr.loc[~data_hr.key.isin([
-        # => englischsprachig
-        "900230", "900250", "900251", "900252", "900253", "900260", "900261",
-        # => bandenmäßiger Wohnungseinbruchdiebstahl mit Tageswohnungseinbruch (very special)
-        "943520",
-        "972500",  # => illegale Einreise + Aufenthalt (in 725... enthalten)
-        # "973000",  # => Rauschgiftdelikte (in 730... enthalten)
-        "980100",  # => "Cybercrime insg."
-        "900200",  # => UN-Kram
-    ])]
+    data_hr = data_hr.loc[
+        ~data_hr.key.isin(
+            [
+                # => englischsprachig
+                "900230",
+                "900250",
+                "900251",
+                "900252",
+                "900253",
+                "900260",
+                "900261",
+                # => bandenmäßiger Wohnungseinbruchdiebstahl mit Tageswohnungseinbruch (very special)
+                "943520",
+                "972500",  # => illegale Einreise + Aufenthalt (in 725... enthalten)
+                # "973000",  # => Rauschgiftdelikte (in 730... enthalten)
+                "980100",  # => "Cybercrime insg."
+                "900200",  # => UN-Kram
+            ]
+        )
+    ]
 
     data_hr.drop("index", axis=1, inplace=True)
 
-    logging.info("Saving imported and processed data to parquet.")
-    data_hr.to_parquet("data/processed/pks.parquet")
+    logger.info("Saving imported and processed German data to parquet.")
+    data_hr.to_parquet("data/processed/pks_de.parquet")
+
+    for language in language_codes:
+        if language == "de":
+            continue
+        data_translated = data_hr.copy()
+        data_translated["label"] = translate_series(data_translated["label"], language)
+        data_translated["shortlabel"] = translate_series(
+            data_translated["shortlabel"], language
+        )
+        data_translated.to_parquet(f"data/processed/pks_{language}.parquet")
